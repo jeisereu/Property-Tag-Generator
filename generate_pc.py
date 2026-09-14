@@ -43,7 +43,8 @@ CATEGORY_RULES = [
     (r'\b(chair)\b', "Chair"),
 
     # Tables
-    (r'\b(office\s*table|clerical\s*table|computer\s*table)\b', "Office Table"),
+    (r'\b(computer\s*table)\b', "Computer Table"),
+    (r'\b(office\s*table|clerical\s*table)\b', "Office Table"),
     (r'\b(foldable\s*table|folding\s*table)\b', "Foldable Table"),
     (r'\b(conference\s*table)\b', "Conference Table"),
     (r'\b(dining\s*set|dining\s*table)\b', "Dining Set"),
@@ -217,11 +218,11 @@ def parse_property_entry(raw_text: str):
         # Clean up candidate
         candidate = clean_tech_specs(candidate, desc)
         candidate = re.sub(
-            r'\b(?:Folding\s+Chair|Foldable\s+Chair|Gang\s+Chair|Office\s+Chair|Executive\s+Chair|Chair|Foldable\s+Table|Office\s+Table|Table|Vertical\s+Cabinet|Steel\s+Cabinet|Cabinet|Webcam|Camera|Rack)\b',
+            r'\b(?:Computer\s+Table|Folding\s+Chair|Foldable\s+Chair|Gang\s+Chair|Office\s+Chair|Executive\s+Chair|Chair|Foldable\s+Table|Office\s+Table|Table|Vertical\s+Cabinet|Steel\s+Cabinet|Cabinet|Webcam|Camera|Rack)\b',
             '',
             candidate,
             flags=re.IGNORECASE
-        ).strip(' /,-;:\'"')
+        ).strip(' ,;:\'"')
 
         if candidate.lower() not in ["n/a", "none", "nan", ""]:
             model_brand = candidate
