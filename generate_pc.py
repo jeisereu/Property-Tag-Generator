@@ -256,9 +256,9 @@ def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=22):
     draw.text((x, y), text, fill="black", font=font)
 
 
-def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Property_Tags_Searchable", max_pages_per_pdf=250):
+def create_searchable_pdf(cards_data, template_image, output_pdf="All_Property_Tags_Searchable.pdf"):
     """
-    Creates searchable PDFs split into batches (max 250 pages each) so Canva accepts them without hitting its 500-page limit.
+    Creates a truly searchable PDF using reportlab so Ctrl+F works across all tags.
     """
     try:
         from reportlab.pdfgen import canvas
@@ -266,53 +266,34 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
         print("\n[!] 'reportlab' is not installed. Run: pip install reportlab")
         return
 
-    total_cards = len(cards_data)
-    if total_cards == 0:
-        return
+    c = canvas.Canvas(output_pdf, pagesize=(1155, 450))
 
-    # Calculate number of batches needed
-    num_batches = (total_cards + max_pages_per_pdf - 1) // max_pages_per_pdf
+    for card in cards_data:
+        c.drawImage(template_image, 0, 0, width=1155, height=450)
 
-    for batch_idx in range(num_batches):
-        start_idx = batch_idx * max_pages_per_pdf
-        end_idx = min(start_idx + max_pages_per_pdf, total_cards)
-        batch_cards = cards_data[start_idx:end_idx]
+        if card["qr_path"] and os.path.exists(card["qr_path"]):
+            c.drawImage(card["qr_path"], 735, 37, width=375, height=374)
 
-        if num_batches > 1:
-            pdf_filename = f"{base_output_pdf}_Part_{batch_idx + 1}.pdf"
-        else:
-            pdf_filename = f"{base_output_pdf}.pdf"
+        c.setFillColorRGB(0, 0, 0)
+        c.setFont("Helvetica-Bold", 17)
 
-        c = canvas.Canvas(pdf_filename, pagesize=(1155, 450))
+        coords = [
+            (card["prop_no"], 359),
+            (card["desc"], 309),
+            (card["model_brand"], 259),
+            (card["sn"], 209),
+            (card["acq"], 159),
+            (card["accountable"], 108),
+        ]
 
-        for card in batch_cards:
-            c.drawImage(template_image, 0, 0, width=1155, height=450)
+        for text, y_pdf in coords:
+            if text:
+                c.drawString(185, y_pdf, text)
 
-            if card["qr_path"] and os.path.exists(card["qr_path"]):
-                c.drawImage(card["qr_path"], 735, 37, width=375, height=374)
+        c.showPage()
 
-            c.setFillColorRGB(0, 0, 0)
-            c.setFont("Helvetica-Bold", 17)
-
-            coords = [
-                (card["prop_no"], 359),
-                (card["desc"], 309),
-                (card["model_brand"], 259),
-                (card["sn"], 209),
-                (card["acq"], 159),
-                (card["accountable"], 108),
-            ]
-
-            for text, y_pdf in coords:
-                if text:
-                    c.drawString(185, y_pdf, text)
-
-            c.showPage()
-
-        c.save()
-        print(f"[+] Created: '{pdf_filename}' (Contains items {start_idx + 1} to {end_idx})")
-
-    print("\nAll batch PDFs created! You can now drag each Part into Canva independently.")
+    c.save()
+    print(f"\n[+] Successfully created Searchable PDF: '{output_pdf}'")
 
 
 def create_property_tags(
@@ -404,12 +385,7 @@ def create_property_tags(
 
         print(f"Generated: {out_png} -> [Desc: {desc or '(blank)'} | Model: {model_brand or '(blank)'} | SN: {sn or '(blank)'}]")
 
-    create_searchable_pdf(
-        cards_for_pdf, 
-        template_image, 
-        base_output_pdf="All_Property_Tags_Searchable", 
-        max_pages_per_pdf=250
-    )
+    create_searchable_pdf(cards_for_pdf, template_image, output_pdf="All_Property_Tags_Searchable.pdf")
 
 
 if __name__ == "__main__":
