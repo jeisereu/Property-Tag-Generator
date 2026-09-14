@@ -20,7 +20,9 @@ CATEGORY_RULES = [
     (r'\b(air\s*condition(?:er)?|aircon|split\s*type|window\s*type)\b', "Air Conditioner"),
     (r'\b(electric\s*fan|stand\s*fan|wall\s*fan|desk\s*fan)\b', "Electric Fan"),
     (r'\b(television|smart\s*tv|tv)\b', "Television"),
-    (r'\b(wireless\s*router|router|access\s*point)\b', "Wireless Router"),
+    (r'\b(wireless\s*access\s*point|access\s*point|\bwap\b)\b', "Wireless Access Point"),
+    (r'\b(wireless\s*router)\b', "Wireless Router"),
+    (r'\b(router)\b', "Router"),
     (r'\b(airfiber|ubiquiti\s*airfiber)\b', "Wireless Router"),
     (r'\b(paper\s*shredder|shredder)\b', "Paper Shredder"),
     (r'\b(fingerprint|biometric|attendance\s*device|time\s*attendance)\b', "Biometric Device"),
@@ -58,18 +60,25 @@ CATEGORY_RULES = [
 def clean_tech_specs(text: str, desc: str = "") -> str:
     """
     Cleans long technical marketing buzzwords or spec descriptions from electronic gear.
+    Protects text inside parentheses so model numbers like (AID1000-1000VA) are preserved.
     """
     cleaned = text.strip()
 
-    # Discard lines that are purely furniture specs (e.g. "-5 Shelves with Glass Door...")
     if re.search(r'^\s*[-*•–—]?\s*\d*\s*(?:shelves|drawers?|doors?|glass|wooden|layer|tier)', cleaned, re.IGNORECASE):
         return ""
 
-    # Remove redundant description name if embedded in the line (e.g. "Monitor" in "GAMDIAS Monitor Atlas...")
     if desc:
         cleaned = re.sub(rf'\b{re.escape(desc)}\b', '', cleaned, flags=re.IGNORECASE)
 
-    # Stop before common spec buzzwords / technical parameters
+    # Strip generic device descriptors that are not part of the brand/model name
+    cleaned = re.sub(r'\b(?:Desktop|Laptop)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
+
+    # Mask text inside parentheses to prevent cutting off model codes like (AID1000-1000VA)
+    parens = re.findall(r'\([^)]*\)', cleaned)
+    masked = cleaned
+    for i, p in enumerate(parens):
+        masked = masked.replace(p, f"__PAREN_{i}__")
+
     spec_triggers = [
         r'\b\d+\s*Hz\b',                                    # 180Hz, 144Hz
         r'\b(?:IPS|VA|TN|OLED)\b',                           # Panel types
@@ -77,7 +86,7 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
         r'\b(?:HDMI|DP\s*\d|DisplayPort|Audio\s*out|VGA)\b', # Ports
         r'\b(?:Flat|Curved|Wall\s*Bracket)\b',              # Monitor features
         r'\b(?:Back\s*up|Backup)\b',                        # UPS Back up
-        r'\b\d+\s*(?:VA|kVA)\b',                            # 1200VA, 650VA
+        r'(?<![-\w])\d+\s*(?:VA|kVA)\b',                    # Matches 1200VA, but NOT hyphenated -1000VA
         r'\b\d+\s*(?:watts?|W)\b',                          # 650watts
         r'\b(?:with\s*Built-in|Built-in\s*AVR|AVR)\b',      # AVR
         r'\b(?:\d+IEC|\d+\s*universal\s*socket|Outlet|socket)\b', # Sockets
@@ -86,12 +95,15 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
     ]
 
     pattern = '|'.join(spec_triggers)
-    match = re.search(pattern, cleaned, re.IGNORECASE)
+    match = re.search(pattern, masked, re.IGNORECASE)
     if match:
-        cleaned = cleaned[:match.start()]
+        masked = masked[:match.start()]
 
-    # Normalize spaces and strip quotes/brackets
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip(' ,;:-"\'')
+    # Restore parentheses
+    for i, p in enumerate(parens):
+        masked = masked.replace(f"__PAREN_{i}__", p)
+
+    cleaned = re.sub(r'\s+', ' ', masked).strip(' ,;:-"\'')
     return cleaned
 
 
@@ -148,11 +160,16 @@ def parse_property_entry(raw_text: str):
         if val.lower() not in ["n/a", "none", "nan"]:
             explicit_model = val
 
-    # If explicit_model exists but no explicit_brand, look for brand in comma_parts (e.g., TP-Link)
+    # If explicit_model exists but no explicit_brand, only attach clean brand names (like TP-Link)
     if explicit_model and not explicit_brand and len(comma_parts) > 1:
         for p in comma_parts[1:]:
-            if p.lower() not in desc.lower():
-                explicit_brand = p
+            p_clean = p.strip()
+            # If the chunk contains category words (e.g. "Monitor", "Chair", "Switch"), skip it!
+            if desc.lower() in p_clean.lower() or any(w in p_clean.lower() for w in ["monitor", "chair", "table", "cabinet", "rack", "switch", "unit"]):
+                continue
+            # Only treat as brand if it is concise (1-2 words like "TP-Link", "Asus", "Gamdias")
+            if len(p_clean.split()) <= 2:
+                explicit_brand = p_clean
                 break
 
     model_brand = ""
@@ -179,7 +196,8 @@ def parse_property_entry(raw_text: str):
         if not candidate and len(comma_parts) > 1:
             sub_parts = []
             for p in comma_parts:
-                if p.strip().lower() in [desc.lower(), "chair", "table", "cabinet", "rack", "webcam", "switch"]:
+                # Added "desktop" to the skip list
+                if p.strip().lower() in [desc.lower(), "desktop", "chair", "table", "cabinet", "rack", "webcam", "switch", "ups"]:
                     continue
                 sub_parts.append(p)
             candidate = ", ".join(sub_parts) if sub_parts else ""
@@ -194,7 +212,7 @@ def parse_property_entry(raw_text: str):
             ]
             for w in words_to_strip:
                 rem = re.sub(rf'\b{re.escape(w)}\b', '', rem, flags=re.IGNORECASE)
-            candidate = rem.strip(' /,-;()')
+            candidate = rem.strip(' /,-;:\'"')
 
         # Clean up candidate
         candidate = clean_tech_specs(candidate, desc)
@@ -203,7 +221,7 @@ def parse_property_entry(raw_text: str):
             '',
             candidate,
             flags=re.IGNORECASE
-        ).strip(' /,-;()')
+        ).strip(' /,-;:\'"')
 
         if candidate.lower() not in ["n/a", "none", "nan", ""]:
             model_brand = candidate
@@ -408,13 +426,13 @@ def create_property_tags(
             "qr_path": qr_file_path
         })
 
-        print(f"Generated: {out_png} -> [Desc: {desc or '(blank)'} | Model: {model_brand or '(blank)'} | SN: {sn or '(blank)'}]")
+        # print(f"Generated: {out_png} -> [Desc: {desc or '(blank)'} | Model: {model_brand or '(blank)'} | SN: {sn or '(blank)'}]")
 
     create_searchable_pdf(
         cards_for_pdf, 
         template_image, 
         base_output_pdf="All_Property_Tags_Searchable", 
-        max_pages_per_pdf=250,
+        max_pages_per_pdf=425,
         output_pdf_dir="output_pdf"
     )
 
