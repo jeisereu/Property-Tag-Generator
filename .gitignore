@@ -180,6 +180,8 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+
+output_pdf
 All_Property_Tags_Searchable.pdf
 All_Property_Tags.pdf
 properties-old.csv

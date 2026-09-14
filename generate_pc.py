@@ -256,9 +256,9 @@ def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=22):
     draw.text((x, y), text, fill="black", font=font)
 
 
-def create_searchable_pdf(cards_data, template_image, output_pdf="All_Property_Tags_Searchable.pdf"):
+def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Property_Tags_Searchable", max_pages_per_pdf=250, output_pdf_dir="output_pdf"):
     """
-    Creates a truly searchable PDF using reportlab so Ctrl+F works across all tags.
+    Creates searchable PDFs split into batches and ALWAYS puts them inside 'output_pdf_dir'.
     """
     try:
         from reportlab.pdfgen import canvas
@@ -266,34 +266,59 @@ def create_searchable_pdf(cards_data, template_image, output_pdf="All_Property_T
         print("\n[!] 'reportlab' is not installed. Run: pip install reportlab")
         return
 
-    c = canvas.Canvas(output_pdf, pagesize=(1155, 450))
+    total_cards = len(cards_data)
+    if total_cards == 0:
+        return
 
-    for card in cards_data:
-        c.drawImage(template_image, 0, 0, width=1155, height=450)
+    # 1. Ensure the dedicated PDF folder exists
+    os.makedirs(output_pdf_dir, exist_ok=True)
 
-        if card["qr_path"] and os.path.exists(card["qr_path"]):
-            c.drawImage(card["qr_path"], 735, 37, width=375, height=374)
+    # 2. Calculate batches
+    num_batches = (total_cards + max_pages_per_pdf - 1) // max_pages_per_pdf
 
-        c.setFillColorRGB(0, 0, 0)
-        c.setFont("Helvetica-Bold", 17)
+    for batch_idx in range(num_batches):
+        start_idx = batch_idx * max_pages_per_pdf
+        end_idx = min(start_idx + max_pages_per_pdf, total_cards)
+        batch_cards = cards_data[start_idx:end_idx]
 
-        coords = [
-            (card["prop_no"], 359),
-            (card["desc"], 309),
-            (card["model_brand"], 259),
-            (card["sn"], 209),
-            (card["acq"], 159),
-            (card["accountable"], 108),
-        ]
+        # Name the file (e.g. output_pdf/All_Property_Tags_Searchable_Part_1.pdf)
+        if num_batches > 1:
+            file_name = f"{base_output_pdf}_Part_{batch_idx + 1}.pdf"
+        else:
+            file_name = f"{base_output_pdf}_Part_1.pdf"
+            
+        pdf_path = os.path.join(output_pdf_dir, file_name)
 
-        for text, y_pdf in coords:
-            if text:
-                c.drawString(185, y_pdf, text)
+        c = canvas.Canvas(pdf_path, pagesize=(1155, 450))
 
-        c.showPage()
+        for card in batch_cards:
+            c.drawImage(template_image, 0, 0, width=1155, height=450)
 
-    c.save()
-    print(f"\n[+] Successfully created Searchable PDF: '{output_pdf}'")
+            if card["qr_path"] and os.path.exists(card["qr_path"]):
+                c.drawImage(card["qr_path"], 735, 37, width=375, height=374)
+
+            c.setFillColorRGB(0, 0, 0)
+            c.setFont("Helvetica-Bold", 17)
+
+            coords = [
+                (card["prop_no"], 359),
+                (card["desc"], 309),
+                (card["model_brand"], 259),
+                (card["sn"], 209),
+                (card["acq"], 159),
+                (card["accountable"], 108),
+            ]
+
+            for text, y_pdf in coords:
+                if text:
+                    c.drawString(185, y_pdf, text)
+
+            c.showPage()
+
+        c.save()
+        print(f"[+] Created: '{pdf_path}' (Contains items {start_idx + 1} to {end_idx})")
+
+    print(f"\nAll PDF batches successfully saved in: '{output_pdf_dir}/'")
 
 
 def create_property_tags(
@@ -385,7 +410,13 @@ def create_property_tags(
 
         print(f"Generated: {out_png} -> [Desc: {desc or '(blank)'} | Model: {model_brand or '(blank)'} | SN: {sn or '(blank)'}]")
 
-    create_searchable_pdf(cards_for_pdf, template_image, output_pdf="All_Property_Tags_Searchable.pdf")
+    create_searchable_pdf(
+        cards_for_pdf, 
+        template_image, 
+        base_output_pdf="All_Property_Tags_Searchable", 
+        max_pages_per_pdf=250,
+        output_pdf_dir="output_pdf"
+    )
 
 
 if __name__ == "__main__":
