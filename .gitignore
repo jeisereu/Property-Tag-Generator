@@ -179,3 +179,9 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+
+All_Property_Tags.pdf
+properties-old.csv
+properties.csv
+output_property_tags
