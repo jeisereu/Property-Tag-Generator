@@ -14,7 +14,8 @@ CATEGORY_RULES = [
     (r'\b(printer|all-in-one)\b', "Printer"),
     (r'\b(computer\s*webcam|webcam|web\s*camera)\b', "Webcam"),
     (r'\b(power\s*supply|ups|uninterruptible\s*power)\b', "Power Supply"),
-    (r'\b(generator|genset)\b', "Generator"),
+    (r'\b(portable\s*generator\s*set|portable\s*genset)\b', "Portable Generator Set"),
+    (r'\b(generator\s*set|generator|genset)\b', "Generator"),
     (r'\b(vsat\s*plate|vsat,\s*plate)\b', "VSAT Plate"),
     (r'\b(vsat)\b', "VSAT"),
     (r'\b(air\s*condition(?:er)?|aircon|split\s*type|window\s*type)\b', "Air Conditioner"),
@@ -33,8 +34,14 @@ CATEGORY_RULES = [
     (r'\b(desktop)\b', "Desktop"),
     (r'\b(keyboard)\b', "Keyboard"),
     (r'\b(mouse)\b', "Mouse"),
+    (r'\b(bluetooth\s*(?:and|&)\s*wi-?fi\s*dongle)\b', "Bluetooth and Wifi Dongle"),
+    (r'\b(wi-?fi\s*dongle|wireless\s*dongle)\b', "Wifi Dongle"),
+    (r'\b(bluetooth\s*dongle)\b', "Bluetooth Dongle"),
+    (r'\b(dongle)\b', "Dongle"),
 
     # Chairs
+    (r'\b(wooden\s*chair)\b', "Wooden Chair"),
+    (r'\b(monobloc\s*chair|monoblock\s*chair|monobloc|monoblock)\b', "Monobloc Chair"),
     (r'\b(executive\s*chair)\b', "Executive Chair"),
     (r'\b(office\s*chair|clerical\s*chair|swivel\s*chair)\b', "Office Chair"),
     (r'\b(foldable\s*chair|folding\s*chair)\b', "Foldable Chair"),
@@ -42,7 +49,14 @@ CATEGORY_RULES = [
     (r'\b(conference\s*chair)\b', "Conference Chair"),
     (r'\b(chair)\b', "Chair"),
 
-    # Tables
+    # Radio & Communications (Place ABOVE Tables)
+    (r'\b(desk\s*console)\b', "Desk Console"),
+    (r'\b(desk\s*rf\s*unit|rf\s*unit)\b', "Desk RF Unit"),
+    (r'\b(transceiver|hf\s*radio)\b', "Radio Transceiver"),
+    (r'\b(portable\s*radio|two-way\s*radio|\bradio\b)\b', "Radio"),
+
+    # Tables (Specific types BEFORE generic Table)
+    (r'\b(center\s*table)\b', "Center Table"),
     (r'\b(computer\s*table)\b', "Computer Table"),
     (r'\b(office\s*table|clerical\s*table)\b', "Office Table"),
     (r'\b(foldable\s*table|folding\s*table)\b', "Foldable Table"),
@@ -73,6 +87,11 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
 
     # Strip generic device descriptors that are not part of the brand/model name
     cleaned = re.sub(r'\b(?:Desktop|Laptop)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
+    cleaned = re.sub(r'\b(?:Fingerprint\s*Time\s*Attendance\s*Device|Time\s*Attendance\s*Device|Attendance\s*Device|Biometric\s*Device)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
+    cleaned = re.sub(r'\b(?:Desk\s*Console|Desk\s*RF\s*Unit|RF\s*Unit)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
+    cleaned = re.sub(r'\b(?:\w+\s+Tiered|\d+\s*Tiered|with\s+Glass\s+Top|Glass\s+Top)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
+    # Strip communication buzzwords
+    cleaned = re.sub(r'\b(?:4G\s*LTE|4G|LTE|PoC|Portable)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
 
     # Mask text inside parentheses to prevent cutting off model codes like (AID1000-1000VA)
     parens = re.findall(r'\([^)]*\)', cleaned)
@@ -81,6 +100,7 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
         masked = masked.replace(p, f"__PAREN_{i}__")
 
     spec_triggers = [
+        r'\b(?:High\s*Frequency|\(?HF\)?\s*radio|HF\s*radio)\b', # Radio specs
         r'\b\d+\s*Hz\b',                                    # 180Hz, 144Hz
         r'\b(?:IPS|VA|TN|OLED)\b',                           # Panel types
         r'\b\d{3,4}\s*[xX*]\s*\d{3,4}\b',                  # 2560x1440, 1920x1080
@@ -93,6 +113,7 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
         r'\b(?:\d+IEC|\d+\s*universal\s*socket|Outlet|socket)\b', # Sockets
         r'\b(?:No\s*Software|GL-Fuse)\b',                   # Misc UPS notes
         r'\b(?:\d+MP|\d+P\b|Full-HD|1080P|720P|4K|wide\s*angle|no\s*distortion|w/mic|heavy\s*duty)\b',
+        r'\b(?:Nano\s+Wi-?Fi|Wi-?Fi\s+Bluetooth|Bluetooth\s*\d*(?:\.\d+)?)\b', # Dongle / wireless specs
     ]
 
     pattern = '|'.join(spec_triggers)
@@ -161,6 +182,13 @@ def parse_property_entry(raw_text: str):
         if val.lower() not in ["n/a", "none", "nan"]:
             explicit_model = val
 
+    explicit_engine = None
+    eng_match = re.search(r'Engine\s*Model(?:\s*No\.?)?\s*[:\-]\s*([^\n\r]+)', text, re.IGNORECASE)
+    if eng_match:
+        val = eng_match.group(1).strip()
+        if val.lower() not in ["n/a", "none", "nan"]:
+            explicit_engine = val
+
     # If explicit_model exists but no explicit_brand, only attach clean brand names (like TP-Link)
     if explicit_model and not explicit_brand and len(comma_parts) > 1:
         for p in comma_parts[1:]:
@@ -186,22 +214,36 @@ def parse_property_entry(raw_text: str):
         # A. Multi-line items (e.g. Line 1: "Monitor", Line 2: "GAMDIAS Monitor Atlas QHD27FIC 27" 180Hz...")
         if len(lines) > 1:
             second_line = lines[1]
-            if not re.search(r'^(?:SN|S/N|Serial|Date|Cost)', second_line, re.IGNORECASE):
+            if not re.search(r'^(?:SN|S/N|Serial|Date|Cost|Engine)', second_line, re.IGNORECASE):
                 cleaned_l2 = clean_tech_specs(second_line, desc)
                 if cleaned_l2:
                     candidate = cleaned_l2
                 elif not second_line.startswith(('-', '•', '*')):
                     candidate = second_line
 
+            # If there is an engine model (e.g. 1E45F), attach it to the candidate
+            if explicit_engine and candidate:
+                candidate = f"{candidate} {explicit_engine}"
+
         # B. Comma-separated items
         if not candidate and len(comma_parts) > 1:
             sub_parts = []
             for p in comma_parts:
-                # Added "desktop" to the skip list
-                if p.strip().lower() in [desc.lower(), "desktop", "chair", "table", "cabinet", "rack", "webcam", "switch", "ups"]:
+                p_clean = p.strip()
+                # Skip category words so they don't leak into the model/brand box
+                if p_clean.lower() in [
+                    desc.lower(), "bluetooth and wifi dongle", "wifi dongle", "dongle",
+                    "radio", "portable radio", "center table", "desk console", 
+                    "desk rf unit", "rf unit", "aircon", "air conditioner", "desktop", 
+                    "chair", "table", "cabinet", "rack", "webcam", "switch", "ups"
+                ]:
                     continue
-                sub_parts.append(p)
-            candidate = ", ".join(sub_parts) if sub_parts else ""
+                # Normalize variations like "WINDOWTYPE" -> "WINDOW TYPE"
+                p_clean = re.sub(r'\bWINDOWTYPE\b', 'WINDOW TYPE', p_clean, flags=re.IGNORECASE)
+                sub_parts.append(p_clean)
+
+            # Join with space for seamless brand + variant (e.g. "MABE WINDOW TYPE")
+            candidate = " ".join(sub_parts) if sub_parts else ""
 
         # C. Single-line compound items
         if not candidate:
@@ -209,7 +251,8 @@ def parse_property_entry(raw_text: str):
             words_to_strip = [
                 desc, "SHOE RACK", "MULTI PURPOSE RACK", "MULTI-PURPOSE RACK",
                 "RECTANGULAR", "COMPUTER WEBCAM", "WEBCAM", "DISPLAY CABINET",
-                "WOODEN DISPLAY CABINET", "CABINET", "CHAIR", "TABLE", "NETWORK SWITCH", "SWITCH"
+                "WOODEN DISPLAY CABINET", "CABINET", "CHAIR", "TABLE", "NETWORK SWITCH", "SWITCH",
+                "FINGERPRINT TIME ATTENDANCE DEVICE", "TIME ATTENDANCE DEVICE", "BIOMETRIC DEVICE"
             ]
             for w in words_to_strip:
                 rem = re.sub(rf'\b{re.escape(w)}\b', '', rem, flags=re.IGNORECASE)
@@ -218,11 +261,16 @@ def parse_property_entry(raw_text: str):
         # Clean up candidate
         candidate = clean_tech_specs(candidate, desc)
         candidate = re.sub(
-            r'\b(?:Computer\s+Table|Folding\s+Chair|Foldable\s+Chair|Gang\s+Chair|Office\s+Chair|Executive\s+Chair|Chair|Foldable\s+Table|Office\s+Table|Table|Vertical\s+Cabinet|Steel\s+Cabinet|Cabinet|Webcam|Camera|Rack)\b',
+            r'\b(?:Portable\s+Generator\s+Set|Generator\s+Set|Generator|Portable\s+Radio|Radio|Center\s+Table|Desk\s+Console|Desk\s+RF\s+Unit|RF\s+Unit|Wooden\s+Chair|Monobloc\s+Chair|Monoblock\s+Chair|Computer\s+Table|Folding\s+Chair|Foldable\s+Chair|Gang\s+Chair|Office\s+Chair|Executive\s+Chair|Chair|Foldable\s+Table|Office\s+Table|Table|Vertical\s+Cabinet|Steel\s+Cabinet|Cabinet|Webcam|Camera|Rack|Fingerprint\s+Time\s+Attendance\s+Device|Time\s+Attendance\s+Device)\b',
             '',
             candidate,
             flags=re.IGNORECASE
         ).strip(' ,;:\'"')
+
+        # If candidate is solely an enclosed model code like (SMLH5-11006), unwrap the parentheses
+        paren_code_match = re.fullmatch(r'\(([A-Za-z0-9\-]+)\)', candidate.strip())
+        if paren_code_match:
+            candidate = paren_code_match.group(1)
 
         if candidate.lower() not in ["n/a", "none", "nan", ""]:
             model_brand = candidate
@@ -256,7 +304,7 @@ def format_acq_date_cost(raw_date, raw_cost) -> str:
     return ""
 
 
-def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=22):
+def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=30):
     """Renders text in Pillow with auto-shrink."""
     if not text:
         return
@@ -275,9 +323,28 @@ def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=22):
     draw.text((x, y), text, fill="black", font=font)
 
 
+def draw_fitted_pdf_text(c, text, x, y, max_width=470, font_name="Helvetica-Bold", base_size=25, min_size=12):
+    """
+    Renders text directly in the PDF canvas with dynamic auto-shrinking so text
+    fills the white pill nicely (size 25) without overflowing long entries.
+    """
+    if not text:
+        return
+    size = base_size
+    while size > min_size:
+        w = c.stringWidth(text, font_name, size)
+        if w <= max_width:
+            break
+        size -= 1
+
+    c.setFont(font_name, size)
+    c.drawString(x, y, text)
+
+
 def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Property_Tags_Searchable", max_pages_per_pdf=250, output_pdf_dir="output_pdf"):
     """
     Creates searchable PDFs split into batches and ALWAYS puts them inside 'output_pdf_dir'.
+    Uses font size 25 with auto-fit so text boxes import large and readable in Canva.
     """
     try:
         from reportlab.pdfgen import canvas
@@ -300,7 +367,7 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
         end_idx = min(start_idx + max_pages_per_pdf, total_cards)
         batch_cards = cards_data[start_idx:end_idx]
 
-        # Name the file (e.g. output_pdf/All_Property_Tags_Searchable_Part_1.pdf)
+        # Name the file
         if num_batches > 1:
             file_name = f"{base_output_pdf}_Part_{batch_idx + 1}.pdf"
         else:
@@ -311,26 +378,36 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
         c = canvas.Canvas(pdf_path, pagesize=(1155, 450))
 
         for card in batch_cards:
+            # Draw background tag template
             c.drawImage(template_image, 0, 0, width=1155, height=450)
 
+            # Draw QR code if present
             if card["qr_path"] and os.path.exists(card["qr_path"]):
                 c.drawImage(card["qr_path"], 735, 37, width=375, height=374)
 
             c.setFillColorRGB(0, 0, 0)
-            c.setFont("Helvetica-Bold", 17)
 
+            # Y coordinates vertically re-aligned for size 25 font
             coords = [
-                (card["prop_no"], 359),
-                (card["desc"], 309),
-                (card["model_brand"], 259),
-                (card["sn"], 209),
-                (card["acq"], 159),
-                (card["accountable"], 108),
+                (card["prop_no"], 356),
+                (card["desc"], 306),
+                (card["model_brand"], 256),
+                (card["sn"], 206),
+                (card["acq"], 156),
+                (card["accountable"], 105),
             ]
 
             for text, y_pdf in coords:
-                if text:
-                    c.drawString(185, y_pdf, text)
+                draw_fitted_pdf_text(
+                    c=c,
+                    text=text,
+                    x=185,
+                    y=y_pdf,
+                    max_width=470,
+                    font_name="Helvetica-Bold",
+                    base_size=25,
+                    min_size=12
+                )
 
             c.showPage()
 
@@ -338,7 +415,6 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
         print(f"[+] Created: '{pdf_path}' (Contains items {start_idx + 1} to {end_idx})")
 
     print(f"\nAll PDF batches successfully saved in: '{output_pdf_dir}/'")
-
 
 def create_property_tags(
     csv_file: str = "properties.csv",
@@ -353,13 +429,13 @@ def create_property_tags(
     df = pd.read_csv(csv_file)
 
     TEXT_X = 185
-    MAX_TEXT_WIDTH = 460
-    Y_PROPERTY_NO   = 76
-    Y_DESCRIPTION   = 126
-    Y_MODEL_BRAND   = 176
-    Y_SERIAL_NO     = 226
-    Y_ACQ_DATE_COST = 276
-    Y_ACCOUNTABLE   = 327
+    MAX_TEXT_WIDTH = 470  # (originally 460)
+    Y_PROPERTY_NO   = 71   # (originally 76)
+    Y_DESCRIPTION   = 121  # (originally 126)
+    Y_MODEL_BRAND   = 171  # (originally 176)
+    Y_SERIAL_NO     = 221  # (originally 226)
+    Y_ACQ_DATE_COST = 271  # (originally 276)
+    Y_ACCOUNTABLE   = 322  # (originally 327)
 
     QR_BOX_X = 735
     QR_BOX_Y = 39
@@ -393,12 +469,12 @@ def create_property_tags(
         draw = ImageDraw.Draw(tag)
 
         # Draw non-empty text fields
-        draw_text_fitted(draw, prop_no, TEXT_X, Y_PROPERTY_NO, MAX_TEXT_WIDTH, font_path, 22)
-        draw_text_fitted(draw, desc, TEXT_X, Y_DESCRIPTION, MAX_TEXT_WIDTH, font_path, 22)
-        draw_text_fitted(draw, model_brand, TEXT_X, Y_MODEL_BRAND, MAX_TEXT_WIDTH, font_path, 22)
-        draw_text_fitted(draw, sn, TEXT_X, Y_SERIAL_NO, MAX_TEXT_WIDTH, font_path, 22)
-        draw_text_fitted(draw, acq_date_cost, TEXT_X, Y_ACQ_DATE_COST, MAX_TEXT_WIDTH, font_path, 22)
-        draw_text_fitted(draw, accountable_person, TEXT_X, Y_ACCOUNTABLE, MAX_TEXT_WIDTH, font_path, 22)
+        draw_text_fitted(draw, prop_no, TEXT_X, Y_PROPERTY_NO, MAX_TEXT_WIDTH, font_path, 30)
+        draw_text_fitted(draw, desc, TEXT_X, Y_DESCRIPTION, MAX_TEXT_WIDTH, font_path, 30)
+        draw_text_fitted(draw, model_brand, TEXT_X, Y_MODEL_BRAND, MAX_TEXT_WIDTH, font_path, 30)
+        draw_text_fitted(draw, sn, TEXT_X, Y_SERIAL_NO, MAX_TEXT_WIDTH, font_path, 30)
+        draw_text_fitted(draw, acq_date_cost, TEXT_X, Y_ACQ_DATE_COST, MAX_TEXT_WIDTH, font_path, 30)
+        draw_text_fitted(draw, accountable_person, TEXT_X, Y_ACCOUNTABLE, MAX_TEXT_WIDTH, font_path, 30)
 
         # Draw QR code
         qr_file_path = None
