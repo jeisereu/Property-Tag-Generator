@@ -11,4 +11,4 @@ There are other supposed information, such as **Person Accountable**, however, c
 - Outputs all property tag/cards as PNG images individually at the output_property_tags folder
 - Outputs batches of property tag/cards as PDF, hardcoded as 450 max pages per PDF.
 
-**Code is messy as hell, has a lot of arbitrary rules because the data was very non-uniform on the description column from the ICF.
+*Code is messy as hell, has a lot of arbitrary rules because the data was very non-uniform on the description column from the ICF.*
