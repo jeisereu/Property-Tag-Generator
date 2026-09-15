@@ -56,6 +56,7 @@ CATEGORY_RULES = [
     (r'\b(portable\s*radio|two-way\s*radio|\bradio\b)\b', "Radio"),
 
     # Tables (Specific types BEFORE generic Table)
+    (r'\b(executive\s*table)\b', "Executive Table"),
     (r'\b(center\s*table)\b', "Center Table"),
     (r'\b(computer\s*table)\b', "Computer Table"),
     (r'\b(office\s*table|clerical\s*table)\b', "Office Table"),
@@ -80,6 +81,11 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
     cleaned = text.strip()
 
     if re.search(r'^\s*[-*•–—]?\s*\d*\s*(?:shelves|drawers?|doors?|glass|wooden|layer|tier)', cleaned, re.IGNORECASE):
+        return ""
+    # If line is purely physical measurements/dimensions (e.g. 100L x 50W x 75H or L180 x W74 x H74)
+    if re.search(r'(?:L\s*\d+|\d+\s*L|\b\d+\s*[xX*]\s*\d+)', cleaned) and not re.search(r'[A-Za-z]{4,}', cleaned):
+        return ""
+    if re.search(r'^\s*(?:Heavy\s*duty\s*)?L\s*\d+\s*[xX*]\s*W\s*\d+', cleaned, re.IGNORECASE):
         return ""
 
     if desc:
