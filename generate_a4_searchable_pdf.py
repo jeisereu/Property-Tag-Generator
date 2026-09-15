@@ -2,11 +2,11 @@ import os
 import math
 
 import pandas as pd
-import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 from generate_pc import (
+    create_qr_image,
     format_acq_date_cost,
     get_accountable_person,
     parse_property_entry,
@@ -76,10 +76,7 @@ def load_cards():
         if property_number:
             qr_path = os.path.join(qr_directory, f"qr_{row_index}.png")
             if not os.path.exists(qr_path):
-                qr = qrcode.QRCode(box_size=10, border=2)
-                qr.add_data(property_number)
-                qr.make(fit=True)
-                qr.make_image(fill_color="black", back_color="white").save(qr_path)
+                create_qr_image(property_number).save(qr_path)
 
         cards.append({
             "prop_no": property_number,

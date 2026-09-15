@@ -6,6 +6,37 @@ from PIL import Image, ImageDraw, ImageFont
 from property_rules import CATEGORY_RULES, clean_tech_specs
 
 
+DICT_LOGO = "DICT-Logo.png"
+
+
+def create_qr_image(property_number: str, size=(375, 374)):
+    """Create a high-redundancy QR code with a small centered DICT logo."""
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=10, border=2)
+    qr.add_data(property_number)
+    qr.make(fit=True)
+    qr_image = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+    qr_image = qr_image.resize(size, Image.Resampling.LANCZOS)
+
+    if not os.path.exists(DICT_LOGO):
+        return qr_image
+
+    logo = Image.open(DICT_LOGO).convert("RGBA")
+    logo_size = int(min(size) * 0.20)
+    logo.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
+
+    # Add a white buffer so the logo does not merge with QR modules.
+    buffer_size = logo_size + 12
+    background = Image.new("RGB", (buffer_size, buffer_size), "white")
+    logo_x = (buffer_size - logo.width) // 2
+    logo_y = (buffer_size - logo.height) // 2
+    background.paste(logo, (logo_x, logo_y), logo)
+
+    paste_x = (qr_image.width - buffer_size) // 2
+    paste_y = (qr_image.height - buffer_size) // 2
+    qr_image.paste(background, (paste_x, paste_y))
+    return qr_image
+
+
 def resolve_csv_file(csv_file: str = "properties.csv") -> str:
     """Use the main CSV when available, otherwise use the sample CSV."""
     if os.path.exists(csv_file):
@@ -383,11 +414,7 @@ def create_property_tags(
         # Draw QR code
         qr_file_path = None
         if prop_no:
-            qr = qrcode.QRCode(box_size=10, border=2)
-            qr.add_data(prop_no)
-            qr.make(fit=True)
-            qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-            qr_img = qr_img.resize(QR_TARGET_SIZE, Image.Resampling.LANCZOS)
+            qr_img = create_qr_image(prop_no, QR_TARGET_SIZE)
             tag.paste(qr_img, (QR_BOX_X, QR_BOX_Y))
 
             qr_file_path = os.path.join(temp_qr_dir, f"qr_{idx}.png")

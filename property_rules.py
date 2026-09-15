@@ -8,6 +8,7 @@ CATEGORY_RULES = [
     (r'\b(network\s*switch|gigabit\s*switch|smart\s*switch|poe\s*switch|\bswitch\b)\b', "Network Switch"),
     (r'\b(gaming\s*monitor|monitor|lcd\s*display|led\s*display|computer\s*display)\b', "Monitor"),
     (r'\b(laptop|notebook)\b', "Laptop"),
+    (r'\b(3D\s*printer)\b', "3D Printer"),
     (r'\b(printer|all-in-one)\b', "Printer"),
     (r'\b(computer\s*webcam|webcam|web\s*camera)\b', "Webcam"),
     (r'\b(power\s*supply|ups|uninterruptible\s*power)\b', "Power Supply"),
