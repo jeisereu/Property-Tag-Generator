@@ -13,7 +13,9 @@ There are other supposed information, such as **Person Accountable**, however, c
 - Outputs another PDF where there's as many property cards in 3 columns, one inch height each, in A4 pages.
 
 ## Setup and Execution
-- **Install dependencies first on virtual environment, maybe global for all I care LOL using `python -m pip install -r requirements.txt`.**
+- **Install dependencies first on virtual environment using `python -m pip install -r requirements.txt`.**
 - **First two outputs are done by running `python generate_pc.py` and for the 3rd listed output, run `python generate_a4_searchable_pdf.py`.**
+
+*Uses `properties_sample.csv` if main  `properties.csv` file is not available*
 
 *Code is messy as hell, has a lot of arbitrary rules because the data was very non-uniform on the description column from the ICF.*

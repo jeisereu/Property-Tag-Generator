@@ -6,7 +6,7 @@ import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
-from generate_pc import format_acq_date_cost, parse_property_entry
+from generate_pc import format_acq_date_cost, parse_property_entry, resolve_csv_file
 
 
 INPUT_CSV = "properties.csv"
@@ -49,7 +49,7 @@ def draw_fitted_text(pdf, text, x, y, max_width, font_size, min_size=MIN_FONT_SI
 def load_cards():
     """Read and normalize the same property data used by generate_pc.py."""
     cards = []
-    data = pd.read_csv(INPUT_CSV)
+    data = pd.read_csv(resolve_csv_file(INPUT_CSV))
     qr_directory = os.path.join("output_property_tags", "_temp_qr")
     os.makedirs(qr_directory, exist_ok=True)
 

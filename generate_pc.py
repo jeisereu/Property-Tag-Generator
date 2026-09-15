@@ -6,6 +6,19 @@ from PIL import Image, ImageDraw, ImageFont
 from property_rules import CATEGORY_RULES, clean_tech_specs
 
 
+def resolve_csv_file(csv_file: str = "properties.csv") -> str:
+    """Use the main CSV when available, otherwise use the sample CSV."""
+    if os.path.exists(csv_file):
+        return csv_file
+
+    fallback_csv = "properties_sample.csv"
+    if os.path.exists(fallback_csv):
+        print(f"[!] '{csv_file}' not found. Using '{fallback_csv}'.")
+        return fallback_csv
+
+    return csv_file
+
+
 def parse_property_entry(raw_text: str):
     """
     Parses messy, multi-line, or comma-separated inventory entries into:
@@ -303,7 +316,7 @@ def create_property_tags(
     temp_qr_dir = os.path.join(output_dir, "_temp_qr")
     os.makedirs(temp_qr_dir, exist_ok=True)
 
-    df = pd.read_csv(csv_file)
+    df = pd.read_csv(resolve_csv_file(csv_file))
 
     TEXT_X = 185
     MAX_TEXT_WIDTH = 470  # (originally 460)
