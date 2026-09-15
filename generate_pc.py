@@ -332,7 +332,7 @@ def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=30):
 def draw_fitted_pdf_text(c, text, x, y, max_width=470, font_name="Helvetica-Bold", base_size=25, min_size=12):
     """
     Renders text directly in the PDF canvas with dynamic auto-shrinking so text
-    fills the white pill nicely (size 25) without overflowing long entries.
+    fills the white pill nicely (size 27) without overflowing long entries.
     """
     if not text:
         return
@@ -393,14 +393,14 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
 
             c.setFillColorRGB(0, 0, 0)
 
-            # Y coordinates vertically re-aligned for size 25 font
+            # Y coordinates shifted slightly downward for size 27 font
             coords = [
-                (card["prop_no"], 356),
-                (card["desc"], 306),
-                (card["model_brand"], 256),
-                (card["sn"], 206),
-                (card["acq"], 156),
-                (card["accountable"], 105),
+                (card["prop_no"], 353),
+                (card["desc"], 303),
+                (card["model_brand"], 253),
+                (card["sn"], 203),
+                (card["acq"], 153),
+                (card["accountable"], 102),
             ]
 
             for text, y_pdf in coords:
@@ -411,7 +411,7 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
                     y=y_pdf,
                     max_width=470,
                     font_name="Helvetica-Bold",
-                    base_size=25,
+                    base_size=27,
                     min_size=12
                 )
 
@@ -509,7 +509,7 @@ def create_property_tags(
             "qr_path": qr_file_path
         })
 
-        # print(f"Generated: {out_png} -> [Desc: {desc or '(blank)'} | Model: {model_brand or '(blank)'} | SN: {sn or '(blank)'}]")
+        print(f"Generated: {out_png} -> [Desc: {desc or '(blank)'} | Model: {model_brand or '(blank)'} | SN: {sn or '(blank)'}]")
 
     create_searchable_pdf(
         cards_for_pdf, 
