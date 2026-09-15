@@ -6,7 +6,12 @@ import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
-from generate_pc import format_acq_date_cost, parse_property_entry, resolve_csv_file
+from generate_pc import (
+    format_acq_date_cost,
+    get_accountable_person,
+    parse_property_entry,
+    resolve_csv_file,
+)
 
 
 INPUT_CSV = "properties.csv"
@@ -65,6 +70,7 @@ def load_cards():
 
         description, model_brand, serial_number = parse_property_entry(raw_description)
         acquisition = format_acq_date_cost(row.get("date"), row.get("cost"))
+        row_accountable_person = get_accountable_person(row, ACCOUNTABLE_PERSON)
 
         qr_path = None
         if property_number:
@@ -81,7 +87,7 @@ def load_cards():
             "model_brand": model_brand,
             "sn": serial_number,
             "acq": acquisition,
-            "accountable": ACCOUNTABLE_PERSON,
+            "accountable": row_accountable_person,
             "qr_path": qr_path,
         })
 

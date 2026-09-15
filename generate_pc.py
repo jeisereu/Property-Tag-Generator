@@ -19,6 +19,19 @@ def resolve_csv_file(csv_file: str = "properties.csv") -> str:
     return csv_file
 
 
+def get_accountable_person(row, default_person: str = "N. TABO") -> str:
+    """Return the row's accountable person, or the configured default."""
+    value = row.get("person_accountable", "")
+    if pd.isna(value):
+        return default_person
+
+    person = str(value).strip()
+    if person.lower() in ["", "nan", "none", "n/a", "na"]:
+        return default_person
+
+    return person
+
+
 def parse_property_entry(raw_text: str):
     """
     Parses messy, multi-line, or comma-separated inventory entries into:
@@ -353,6 +366,7 @@ def create_property_tags(
 
         desc, model_brand, sn = parse_property_entry(raw_desc)
         acq_date_cost = format_acq_date_cost(row.get("date"), row.get("cost"))
+        row_accountable_person = get_accountable_person(row, accountable_person)
 
         # Individual PNG
         tag = Image.open(template_image).convert("RGB")
@@ -364,7 +378,7 @@ def create_property_tags(
         draw_text_fitted(draw, model_brand, TEXT_X, Y_MODEL_BRAND, MAX_TEXT_WIDTH, font_path, 30)
         draw_text_fitted(draw, sn, TEXT_X, Y_SERIAL_NO, MAX_TEXT_WIDTH, font_path, 30)
         draw_text_fitted(draw, acq_date_cost, TEXT_X, Y_ACQ_DATE_COST, MAX_TEXT_WIDTH, font_path, 30)
-        draw_text_fitted(draw, accountable_person, TEXT_X, Y_ACCOUNTABLE, MAX_TEXT_WIDTH, font_path, 30)
+        draw_text_fitted(draw, row_accountable_person, TEXT_X, Y_ACCOUNTABLE, MAX_TEXT_WIDTH, font_path, 30)
 
         # Draw QR code
         qr_file_path = None
@@ -389,7 +403,7 @@ def create_property_tags(
             "model_brand": model_brand,
             "sn": sn,
             "acq": acq_date_cost,
-            "accountable": accountable_person,
+            "accountable": row_accountable_person,
             "qr_path": qr_file_path
         })
 
