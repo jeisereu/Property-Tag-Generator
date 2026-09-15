@@ -12,7 +12,7 @@ There are other supposed information, such as **Person Accountable**, however, c
 - Outputs batches of property tag/cards as PDF (individual pages), hardcoded as 450 max pages per PDF.
 - Outputs another PDF where there's as many property cards in 3 columns, one inch height each, in A4 pages.
 
-** Install dependencies first on virtual environment, maybe global for all I care LOL using `python -m pip install -r requirements.txt`. **
-** First two outputs are done by running `python generate_pc.py` and for the 3rd listed output, run `python generate_a4_searchable_pdf.py`. **
+**Install dependencies first on virtual environment, maybe global for all I care LOL using `python -m pip install -r requirements.txt`.**
+**First two outputs are done by running `python generate_pc.py` and for the 3rd listed output, run `python generate_a4_searchable_pdf.py`.**
 
 *Code is messy as hell, has a lot of arbitrary rules because the data was very non-uniform on the description column from the ICF.*
