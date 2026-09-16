@@ -32,6 +32,7 @@ CATEGORY_RULES = [
     (r'\b(window\s*blinds|blinds)\b', "Window Blinds"),
     (r'\b(projector)\b', "Projector"),
     (r'\b(scanner)\b', "Scanner"),
+    (r'\b(dslr\s+camera)\b', "DSLR Camera"),
     (r'\b(paper\s*cutter)\b', "Paper Cutter"),
     (r'\b(desktop)\b', "Desktop"),
     (r'\b(keyboard)\b', "Keyboard"),
