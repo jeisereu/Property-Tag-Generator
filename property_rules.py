@@ -5,8 +5,11 @@ import re
 CATEGORY_RULES = [
     # Network & IT
     (r'\b(system\s*unit)\b', "System Unit"),
+    (r'\b(omada\s+hardware\s+controller)\b', "Hardware Controller"),
+    (r'\b(omada\s+gigabit\s+vpn\s+gateway)\b', "Gigabit VPN Gateway"),
     (r'\b(network\s*switch|gigabit\s*switch|smart\s*switch|poe\s*switch|\bswitch\b)\b', "Network Switch"),
     (r'\b(gaming\s*monitor|monitor|lcd\s*display|led\s*display|computer\s*display)\b', "Monitor"),
+    (r'\b(gaming\s+laptop)\b', "Gaming Laptop"),
     (r'\b(laptop|notebook)\b', "Laptop"),
     (r'\b(3D\s*printer)\b', "3D Printer"),
     (r'\b(printer|all-in-one)\b', "Printer"),
@@ -81,7 +84,10 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
         return ""
 
     if desc:
-        cleaned = re.sub(rf'\b{re.escape(desc)}\b', '', cleaned, flags=re.IGNORECASE)
+        if desc.upper() == "UPS":
+            cleaned = re.sub(r'\bUPS\b(?!\s*-\s*\d+\s*(?:VA|kVA)\b)', '', cleaned, flags=re.IGNORECASE)
+        else:
+            cleaned = re.sub(rf'\b{re.escape(desc)}\b', '', cleaned, flags=re.IGNORECASE)
 
     # Color is an attribute, not part of the model or brand field.
     cleaned = re.sub(r'\bColor\s*:.*', '', cleaned, flags=re.IGNORECASE | re.DOTALL)

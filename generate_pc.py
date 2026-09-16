@@ -138,6 +138,8 @@ def parse_property_entry(raw_text: str):
     model_brand = ""
     if explicit_brand and explicit_model:
         model_brand = f"{explicit_brand} {explicit_model}"
+        if re.search(r'\bOmada\b', text, re.IGNORECASE):
+            model_brand = f"Omada {model_brand}"
     elif explicit_brand:
         model_brand = explicit_brand
     elif explicit_model:
