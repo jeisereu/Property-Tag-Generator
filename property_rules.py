@@ -50,6 +50,7 @@ CATEGORY_RULES = [
     (r'\b(desk\s*console)\b', "Desk Console"),
     (r'\b(desk\s*rf\s*unit|rf\s*unit)\b', "Desk RF Unit"),
     (r'\b(transceiver|hf\s*radio)\b', "Radio Transceiver"),
+    (r'\b(two[\s-]*way\s+radio)\b', "Two Way Radio"),
     (r'\b(portable\s*radio|two-way\s*radio|\bradio\b)\b', "Radio"),
     # Tables
     (r'\b(executive\s*table)\b', "Executive Table"),
@@ -82,9 +83,14 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
     if desc:
         cleaned = re.sub(rf'\b{re.escape(desc)}\b', '', cleaned, flags=re.IGNORECASE)
 
+    # Color is an attribute, not part of the model or brand field.
+    cleaned = re.sub(r'\bColor\s*:.*', '', cleaned, flags=re.IGNORECASE | re.DOTALL)
+
     cleaned = re.sub(r'\b(?:Desktop|Laptop)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
     cleaned = re.sub(r'\b(?:Fingerprint\s*Time\s*Attendance\s*Device|Time\s*Attendance\s*Device|Attendance\s*Device|Biometric\s*Device)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
     cleaned = re.sub(r'\b(?:Desk\s*Console|Desk\s*RF\s*Unit|RF\s*Unit)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
+    cleaned = re.sub(r'\bTransceiver\s+Supply\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
+    cleaned = re.sub(r'\bwith\s+Leatherette\s+Cushion\s+and\s+Metal\s+Base\s*-\s*3\s+Seater\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
     cleaned = re.sub(r'\b(?:\w+\s+Tiered|\d+\s*Tiered|with\s+Glass\s+Top|Glass\s+Top)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
     cleaned = re.sub(r'\b(?:4G\s*LTE|4G|LTE|PoC|Portable)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
 

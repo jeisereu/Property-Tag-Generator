@@ -195,7 +195,7 @@ def parse_property_entry(raw_text: str):
         # Clean up candidate
         candidate = clean_tech_specs(candidate, desc)
         candidate = re.sub(
-            r'\b(?:Portable\s+Generator\s+Set|Generator\s+Set|Generator|Portable\s+Radio|Radio|Center\s+Table|Desk\s+Console|Desk\s+RF\s+Unit|RF\s+Unit|Wooden\s+Chair|Monobloc\s+Chair|Monoblock\s+Chair|Computer\s+Table|Folding\s+Chair|Foldable\s+Chair|Gang\s+Chair|Office\s+Chair|Executive\s+Chair|Chair|Foldable\s+Table|Office\s+Table|Table|Vertical\s+Cabinet|Steel\s+Cabinet|Cabinet|Webcam|Camera|Rack|Fingerprint\s+Time\s+Attendance\s+Device|Time\s+Attendance\s+Device)\b',
+            r'\b(?:Portable\s+Generator\s+Set|Generator\s+Set|Generator|Portable\s+Radio|Two[\s-]+Way\s+Radio|Radio|Center\s+Table|Desk\s+Console|Desk\s+RF\s+Unit|RF\s+Unit|Wooden\s+Chair|Monobloc\s+Chair|Monoblock\s+Chair|Computer\s+Table|Folding\s+Chair|Foldable\s+Chair|Gang\s+Chair|Office\s+Chair|Executive\s+Chair|Chair|Foldable\s+Table|Office\s+Table|Table|Vertical\s+Cabinet|Steel\s+Cabinet|Cabinet|Webcam|Camera|Rack|Fingerprint\s+Time\s+Attendance\s+Device|Time\s+Attendance\s+Device)\b',
             '',
             candidate,
             flags=re.IGNORECASE
