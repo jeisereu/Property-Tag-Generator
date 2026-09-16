@@ -199,7 +199,7 @@ def parse_property_entry(raw_text: str):
             '',
             candidate,
             flags=re.IGNORECASE
-        ).strip(' ,;:\'"')
+        ).strip(' ,;:')
 
         # If candidate is solely an enclosed model code like (SMLH5-11006), unwrap the parentheses
         paren_code_match = re.fullmatch(r'\(([A-Za-z0-9\-]+)\)', candidate.strip())
@@ -238,26 +238,26 @@ def format_acq_date_cost(raw_date, raw_cost) -> str:
     return ""
 
 
-def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=30):
-    """Renders text in Pillow with auto-shrink."""
+def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=30, min_size=8):
+    """Render text with auto-shrink so long values stay inside their field."""
     if not text:
         return
     size = base_size
     font = None
-    while size >= 12:
+    while size >= min_size:
         try:
             font = ImageFont.truetype(base_font_path, size) if base_font_path else ImageFont.load_default()
         except:
             font = ImageFont.load_default()
             break
         bbox = draw.textbbox((x, y), text, font=font)
-        if (bbox[2] - bbox[0]) <= max_width or size <= 12:
+        if (bbox[2] - bbox[0]) <= max_width or size <= min_size:
             break
         size -= 2
     draw.text((x, y), text, fill="black", font=font)
 
 
-def draw_fitted_pdf_text(c, text, x, y, max_width=470, font_name="Helvetica-Bold", base_size=25, min_size=12):
+def draw_fitted_pdf_text(c, text, x, y, max_width=470, font_name="Helvetica-Bold", base_size=25, min_size=8):
     """
     Renders text directly in the PDF canvas with dynamic auto-shrinking so text
     fills the white pill nicely (size 27) without overflowing long entries.
@@ -340,7 +340,7 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
                     max_width=470,
                     font_name="Helvetica-Bold",
                     base_size=27,
-                    min_size=12
+                    min_size=8
                 )
 
             c.showPage()

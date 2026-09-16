@@ -29,6 +29,7 @@ CATEGORY_RULES = [
     (r'\b(window\s*blinds|blinds)\b', "Window Blinds"),
     (r'\b(projector)\b', "Projector"),
     (r'\b(scanner)\b', "Scanner"),
+    (r'\b(paper\s*cutter)\b', "Paper Cutter"),
     (r'\b(desktop)\b', "Desktop"),
     (r'\b(keyboard)\b', "Keyboard"),
     (r'\b(mouse)\b', "Mouse"),
@@ -73,7 +74,7 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
 
     if re.search(r'^\s*[-*•–—]?\s*\d*\s*(?:shelves|drawers?|doors?|glass|wooden|layer|tier)', cleaned, re.IGNORECASE):
         return ""
-    if re.search(r'(?:L\s*\d+|\d+\s*L|\b\d+\s*[xX*]\s*\d+)', cleaned) and not re.search(r'[A-Za-z]{4,}', cleaned):
+    if re.search(r'(?:L\s*\d+|\d+\s*L|\b\d+\s*["\']?\s*[xX*]\s*\d+\s*["\']?)', cleaned) and not re.search(r'[A-Za-z]{4,}', cleaned):
         return ""
     if re.search(r'^\s*(?:Heavy\s*duty\s*)?L\s*\d+\s*[xX*]\s*W\s*\d+', cleaned, re.IGNORECASE):
         return ""
@@ -116,4 +117,4 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
     for i, part in enumerate(parens):
         masked = masked.replace(f"__PAREN_{i}__", part)
 
-    return re.sub(r'\s+', ' ', masked).strip(' ,;:-"\'')
+    return re.sub(r'\s+', ' ', masked).strip(' ,;:-')
