@@ -188,3 +188,5 @@ properties-old.csv
 properties.csv
 output_property_tags
 old_csv
+generate_form_qr.py
+form_qr_code.png

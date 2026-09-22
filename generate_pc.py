@@ -21,19 +21,23 @@ def create_qr_image(property_number: str, size=(375, 374)):
         return qr_image
 
     logo = Image.open(DICT_LOGO).convert("RGBA")
-    logo_size = int(min(size) * 0.20)
+    logo_size = int(min(size) * 0.22)
     logo.thumbnail((logo_size, logo_size), Image.Resampling.LANCZOS)
 
-    # Add a white buffer so the logo does not merge with QR modules.
-    buffer_size = logo_size + 12
+    # Add a circular white buffer so the logo does not merge with QR modules.
+    buffer_size = logo_size + 6
     background = Image.new("RGB", (buffer_size, buffer_size), "white")
+    circle_mask = Image.new("L", (buffer_size, buffer_size), 0)
+    mask_draw = ImageDraw.Draw(circle_mask)
+    mask_draw.ellipse((0, 0, buffer_size - 1, buffer_size - 1), fill=255)
     logo_x = (buffer_size - logo.width) // 2
     logo_y = (buffer_size - logo.height) // 2
     background.paste(logo, (logo_x, logo_y), logo)
+    background.putalpha(circle_mask)
 
     paste_x = (qr_image.width - buffer_size) // 2
     paste_y = (qr_image.height - buffer_size) // 2
-    qr_image.paste(background, (paste_x, paste_y))
+    qr_image.paste(background.convert("RGB"), (paste_x, paste_y), background)
     return qr_image
 
 
@@ -63,6 +67,46 @@ def get_accountable_person(row, default_person: str = "N. TABO") -> str:
     return person
 
 
+def extract_descriptive_attributes(raw_text: str) -> str:
+    """Return dimensions and color when an entry has no model or brand."""
+    if not isinstance(raw_text, str):
+        return ""
+
+    attributes = []
+    dimension_matches = re.findall(
+        r'\b\d+(?:\.\d+)?\s*(?:[xX*]\s*\d+(?:\.\d+)?\s*)?'
+        r'(?:cm|mm|m|ft\.?|in\.?|inch(?:es)?|["\'])\b',
+        raw_text,
+        re.IGNORECASE,
+    )
+    attributes.extend(match.strip() for match in dimension_matches)
+
+    color_match = re.search(r'\bColor\s*:\s*([^\n\r,;]+)', raw_text, re.IGNORECASE)
+    if color_match:
+        attributes.append(color_match.group(1).strip())
+    else:
+        parenthesized_colors = re.findall(
+            r'\(([^()]*\b(?:white|black|beige|brown|gray|grey|red|yellow|green|blue|orange|pink|purple)\b[^()]*)\)',
+            raw_text,
+            re.IGNORECASE,
+        )
+        attributes.extend(color.strip() for color in parenthesized_colors)
+
+    return " ".join(dict.fromkeys(attributes))
+
+
+def is_descriptive_attributes_only(value: str, attributes: str, description: str) -> bool:
+    """Check whether the parsed model field contains only fallback attributes."""
+    if not value or not attributes:
+        return False
+
+    normalize = lambda text: re.sub(r'[^a-z0-9]+', '', text.lower())
+    remaining = normalize(value)
+    for part in [attributes, description, "folding", "foldable"]:
+        remaining = remaining.replace(normalize(part), "")
+    return not remaining
+
+
 def parse_property_entry(raw_text: str):
     """
     Parses messy, multi-line, or comma-separated inventory entries into:
@@ -72,6 +116,7 @@ def parse_property_entry(raw_text: str):
         return "", "", ""
 
     text = raw_text.strip()
+    descriptive_attributes = extract_descriptive_attributes(text)
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     first_line = lines[0] if lines else ""
 
@@ -150,7 +195,11 @@ def parse_property_entry(raw_text: str):
         # A. Multi-line items (e.g. Line 1: "Monitor", Line 2: "GAMDIAS Monitor Atlas QHD27FIC 27" 180Hz...")
         if len(lines) > 1:
             second_line = lines[1]
-            if not re.search(r'^(?:SN|S/N|Serial|Date|Cost|Engine)', second_line, re.IGNORECASE):
+            if not re.search(
+                r'^(?:SN|S/N|Serial|Date|Cost|Engine|Model|Brand|Brand/Model)',
+                second_line,
+                re.IGNORECASE,
+            ):
                 cleaned_l2 = clean_tech_specs(second_line, desc)
                 if cleaned_l2:
                     candidate = cleaned_l2
@@ -210,6 +259,12 @@ def parse_property_entry(raw_text: str):
 
         if candidate.lower() not in ["n/a", "none", "nan", ""]:
             model_brand = candidate
+
+    if descriptive_attributes and (
+        not model_brand
+        or is_descriptive_attributes_only(model_brand, descriptive_attributes, desc)
+    ):
+        model_brand = descriptive_attributes
 
     return desc.upper(), model_brand, sn
 
