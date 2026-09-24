@@ -127,6 +127,11 @@ def draw_card(pdf, card, x, y, width, height):
             BASE_FONT_SIZE * scale_y,
         )
 
+    year = "2026"
+    year_width = pdf.stringWidth(year, FONT_NAME, BASE_FONT_SIZE * scale_y)
+    pdf.setFont(FONT_NAME, BASE_FONT_SIZE * scale_y)
+    pdf.drawString(x + (185 + MAX_TEXT_WIDTH) * scale_x - year_width, y + 50 * scale_y, year)
+
 
 def create_a4_pdf(cards):
     os.makedirs(os.path.dirname(OUTPUT_PDF), exist_ok=True)

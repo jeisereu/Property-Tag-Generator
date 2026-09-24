@@ -180,7 +180,7 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-
+.vscode
 output_pdf
 All_Property_Tags_Searchable.pdf
 All_Property_Tags.pdf
