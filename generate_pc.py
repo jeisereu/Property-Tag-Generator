@@ -314,6 +314,20 @@ def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=30, 
     draw.text((x, y), text, fill="black", font=font)
 
 
+def draw_right_aligned_text(draw, text, right_x, y, base_font_path, base_size=30):
+    """Render text ending at the right edge of a field."""
+    if not text:
+        return
+
+    try:
+        font = ImageFont.truetype(base_font_path, base_size) if base_font_path else ImageFont.load_default()
+    except OSError:
+        font = ImageFont.load_default()
+
+    text_width = draw.textbbox((0, 0), text, font=font)[2]
+    draw.text((right_x - text_width, y), text, fill="black", font=font)
+
+
 def draw_fitted_pdf_text(c, text, x, y, max_width=470, font_name="Helvetica-Bold", base_size=25, min_size=8):
     """
     Renders text directly in the PDF canvas with dynamic auto-shrinking so text
@@ -467,6 +481,7 @@ def create_property_tags(
         draw_text_fitted(draw, sn, TEXT_X, Y_SERIAL_NO, MAX_TEXT_WIDTH, font_path, 30)
         draw_text_fitted(draw, acq_date_cost, TEXT_X, Y_ACQ_DATE_COST, MAX_TEXT_WIDTH, font_path, 30)
         draw_text_fitted(draw, row_accountable_person, TEXT_X, Y_ACCOUNTABLE, MAX_TEXT_WIDTH, font_path, 30)
+        draw_right_aligned_text(draw, "2026", TEXT_X + MAX_TEXT_WIDTH, 363, font_path, 30)
 
         # Draw QR code
         qr_file_path = None
