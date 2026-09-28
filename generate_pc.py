@@ -327,7 +327,7 @@ def parse_property_entry(raw_text: str):
         normalized_model_brand = re.sub(r'[^a-z0-9]+', '', model_brand.lower())
         normalized_color = re.sub(r'[^a-z0-9]+', '', explicit_color.lower())
         if normalized_color not in normalized_model_brand:
-            model_brand = f"{model_brand} {explicit_color}"
+            model_brand = f"{model_brand}, {explicit_color}"
 
     return desc.upper(), model_brand, sn
 
