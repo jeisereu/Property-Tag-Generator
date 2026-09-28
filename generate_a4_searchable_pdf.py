@@ -9,6 +9,7 @@ from generate_pc import (
     create_qr_image,
     format_acq_date_cost,
     get_accountable_person,
+    description_font_size,
     parse_property_entry,
     resolve_csv_file,
 )
@@ -108,23 +109,35 @@ def draw_card(pdf, card, x, y, width, height):
         )
 
     pdf.setFillColorRGB(0, 0, 0)
+    description_size = description_font_size(card["desc"], BASE_FONT_SIZE)
+    model_brand_size = description_font_size(card["model_brand"], BASE_FONT_SIZE)
     fields = [
-        (card["prop_no"], 185, 353),
-        (card["desc"], 185, 303),
-        (card["model_brand"], 185, 253),
-        (card["sn"], 185, 203),
-        (card["acq"], 185, 153),
-        (card["accountable"], 185, 102),
+        (card["prop_no"], 185, 353, BASE_FONT_SIZE),
+        (
+            card["desc"],
+            185,
+            303 + (BASE_FONT_SIZE - description_size) / 2,
+            description_size,
+        ),
+        (
+            card["model_brand"],
+            185,
+            253 + (BASE_FONT_SIZE - model_brand_size) / 2,
+            model_brand_size,
+        ),
+        (card["sn"], 185, 203, BASE_FONT_SIZE),
+        (card["acq"], 185, 153, BASE_FONT_SIZE),
+        (card["accountable"], 185, 102, BASE_FONT_SIZE),
     ]
 
-    for text, original_x, original_y in fields:
+    for text, original_x, original_y, field_font_size in fields:
         draw_fitted_text(
             pdf,
             text,
             x + original_x * scale_x,
             y + original_y * scale_y,
             MAX_TEXT_WIDTH * scale_x,
-            BASE_FONT_SIZE * scale_y,
+            field_font_size * scale_y,
         )
 
     year = "2026"

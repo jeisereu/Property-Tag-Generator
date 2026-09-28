@@ -95,6 +95,15 @@ def extract_descriptive_attributes(raw_text: str) -> str:
     return " ".join(dict.fromkeys(attributes))
 
 
+def extract_explicit_color(raw_text: str) -> str:
+    """Return an explicit Color field for use in the description."""
+    if not isinstance(raw_text, str):
+        return ""
+
+    color_match = re.search(r'\bColor\s*:\s*([^\n\r,;]+)', raw_text, re.IGNORECASE)
+    return color_match.group(1).strip() if color_match else ""
+
+
 def is_descriptive_attributes_only(value: str, attributes: str, description: str) -> bool:
     """Check whether the parsed model field contains only fallback attributes."""
     if not value or not attributes:
@@ -107,6 +116,22 @@ def is_descriptive_attributes_only(value: str, attributes: str, description: str
     return not remaining
 
 
+def description_font_size(text: str, base_size: int, min_size: int = 8) -> int:
+    """Return a character-based starting size for a description field."""
+    reference_length = 36  # len("Hermaco 4D Drawer with safe Vertical")
+    first_reduction = 8
+    step_length = 8
+    step_reduction = 3
+
+    text_length = len(text or "")
+    if text_length <= reference_length:
+        return base_size
+
+    size = base_size - first_reduction
+    size -= ((text_length - reference_length - 1) // step_length) * step_reduction
+    return max(min_size, size)
+
+
 def parse_property_entry(raw_text: str):
     """
     Parses messy, multi-line, or comma-separated inventory entries into:
@@ -117,6 +142,7 @@ def parse_property_entry(raw_text: str):
 
     text = raw_text.strip()
     descriptive_attributes = extract_descriptive_attributes(text)
+    explicit_color = extract_explicit_color(text)
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     first_line = lines[0] if lines else ""
 
@@ -127,6 +153,13 @@ def parse_property_entry(raw_text: str):
         val = sn_match.group(1).strip().strip('"\'')
         if val.lower() not in ["n/a", "na", "none", "nan"]:
             sn = val
+
+    if not sn:
+        imei_match = re.search(r'\bIMEI\s*:\s*([^\n\r]+)', text, re.IGNORECASE)
+        if imei_match:
+            val = imei_match.group(1).strip().strip('"\'')
+            if val.lower() not in ["n/a", "na", "none", "nan"]:
+                sn = val
 
     # 2. Category / Description Extraction
     desc = ""
@@ -145,6 +178,10 @@ def parse_property_entry(raw_text: str):
     comma_parts = [p.strip() for p in re.split(r'[,;]', first_line) if p.strip()]
     if not desc:
         desc = comma_parts[0] if comma_parts else first_line[:20]
+    elif comma_parts and len(comma_parts[0].split()) > 1:
+        first_part = comma_parts[0]
+        if any(re.search(pattern, first_part, re.IGNORECASE) for pattern, _ in CATEGORY_RULES):
+            desc = first_part
 
     # 3. Model / Brand Extraction
     explicit_brand = None
@@ -196,7 +233,7 @@ def parse_property_entry(raw_text: str):
         if len(lines) > 1:
             second_line = lines[1]
             if not re.search(
-                r'^(?:SN|S/N|Serial|Date|Cost|Engine|Model|Brand|Brand/Model)',
+                r'^(?:SN|S/N|Serial|Date|Cost|Engine|Model|Brand|Brand/Model|Color)',
                 second_line,
                 re.IGNORECASE,
             ):
@@ -204,7 +241,14 @@ def parse_property_entry(raw_text: str):
                 if cleaned_l2:
                     candidate = cleaned_l2
                 elif not second_line.startswith(('-', '•', '*')):
-                    candidate = second_line
+                    fallback_l2 = re.sub(
+                        r'\b(?:4G\s*LTE|4G|LTE|PoC|Portable|Radio)\b',
+                        '',
+                        second_line,
+                        flags=re.IGNORECASE,
+                    ).strip(' ,;:-')
+                    if fallback_l2:
+                        candidate = second_line
 
             # If there is an engine model (e.g. 1E45F), attach it to the candidate
             if explicit_engine and candidate:
@@ -260,11 +304,30 @@ def parse_property_entry(raw_text: str):
         if candidate.lower() not in ["n/a", "none", "nan", ""]:
             model_brand = candidate
 
+    if not explicit_brand and not explicit_model and model_brand and len(comma_parts) > 1:
+        first_line_model = " ".join(
+            part for part in comma_parts[1:] if part.lower() != desc.lower()
+        )
+        first_line_normalized = re.sub(r'[^a-z0-9]+', '', first_line_model.lower())
+        model_normalized = re.sub(r'[^a-z0-9]+', '', model_brand.lower())
+        if (
+            first_line_model
+            and first_line_normalized not in model_normalized
+            and model_normalized not in first_line_normalized
+        ):
+            model_brand = f"{first_line_model} {model_brand}"
+
     if descriptive_attributes and (
         not model_brand
         or is_descriptive_attributes_only(model_brand, descriptive_attributes, desc)
     ):
         model_brand = descriptive_attributes
+
+    if explicit_color and model_brand:
+        normalized_model_brand = re.sub(r'[^a-z0-9]+', '', model_brand.lower())
+        normalized_color = re.sub(r'[^a-z0-9]+', '', explicit_color.lower())
+        if normalized_color not in normalized_model_brand:
+            model_brand = f"{model_brand} {explicit_color}"
 
     return desc.upper(), model_brand, sn
 
@@ -476,8 +539,26 @@ def create_property_tags(
 
         # Draw non-empty text fields
         draw_text_fitted(draw, prop_no, TEXT_X, Y_PROPERTY_NO, MAX_TEXT_WIDTH, font_path, 30)
-        draw_text_fitted(draw, desc, TEXT_X, Y_DESCRIPTION, MAX_TEXT_WIDTH, font_path, 30)
-        draw_text_fitted(draw, model_brand, TEXT_X, Y_MODEL_BRAND, MAX_TEXT_WIDTH, font_path, 30)
+        description_size = description_font_size(desc, 30)
+        draw_text_fitted(
+            draw,
+            desc,
+            TEXT_X,
+            Y_DESCRIPTION - (30 - description_size) // 2,
+            MAX_TEXT_WIDTH,
+            font_path,
+            description_size,
+        )
+        model_brand_size = description_font_size(model_brand, 30)
+        draw_text_fitted(
+            draw,
+            model_brand,
+            TEXT_X,
+            Y_MODEL_BRAND - (30 - model_brand_size) // 2,
+            MAX_TEXT_WIDTH,
+            font_path,
+            model_brand_size,
+        )
         draw_text_fitted(draw, sn, TEXT_X, Y_SERIAL_NO, MAX_TEXT_WIDTH, font_path, 30)
         draw_text_fitted(draw, acq_date_cost, TEXT_X, Y_ACQ_DATE_COST, MAX_TEXT_WIDTH, font_path, 30)
         draw_text_fitted(draw, row_accountable_person, TEXT_X, Y_ACCOUNTABLE, MAX_TEXT_WIDTH, font_path, 30)
