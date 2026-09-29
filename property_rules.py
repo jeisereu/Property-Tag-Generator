@@ -103,6 +103,12 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
     cleaned = re.sub(r'\bwith\s+Leatherette\s+Cushion\s+and\s+Metal\s+Base\s*-\s*3\s+Seater\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
     cleaned = re.sub(r'\b(?:\w+\s+Tiered|\d+\s*Tiered|with\s+Glass\s+Top|Glass\s+Top)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
     cleaned = re.sub(r'\b(?:4G\s*LTE|4G|LTE|PoC|Portable)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
+    cleaned = re.sub(
+        r'\b\d+\s*(?:GB|TB)\s*/\s*\d+\s*(?:GB|TB)\b',
+        '',
+        cleaned,
+        flags=re.IGNORECASE,
+    ).strip(' ,;:-')
 
     parens = re.findall(r'\([^)]*\)', cleaned)
     masked = cleaned
