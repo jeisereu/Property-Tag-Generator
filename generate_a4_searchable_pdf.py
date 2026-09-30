@@ -20,6 +20,7 @@ from generate_pc import (
 INPUT_CSV = "properties.csv"
 TEMPLATE_IMAGE = "DICT R5 Property Tag.png"
 SIGNATURE_IMAGE = "sig.png"
+SIGNATURE_IMAGE_2 = "sig2.png"
 OUTPUT_PDF = "output_pdf/Property_Tags_A4_Searchable.pdf"
 ACCOUNTABLE_PERSON = "N. TABO"
 
@@ -102,20 +103,24 @@ def draw_card(pdf, card, x, y, width, height):
 
     pdf.drawImage(TEMPLATE_IMAGE, x, y, width=width, height=height)
 
-    if os.path.exists(SIGNATURE_IMAGE):
-        signature = Image.open(SIGNATURE_IMAGE)
-        signature_width, signature_height = signature.size
-        signature_scale = min(275 / signature_width, 90 / signature_height)
-        rendered_width = signature_width * signature_scale
-        rendered_height = signature_height * signature_scale
-        pdf.drawImage(
-            ImageReader(signature),
-            x + 190 * scale_x,
-            y + 22 * scale_y,
-            width=rendered_width * scale_x,
-            height=rendered_height * scale_y,
-            mask="auto",
-        )
+    for signature_path, signature_x in [
+        (SIGNATURE_IMAGE, 190),
+        (SIGNATURE_IMAGE_2, 490),
+    ]:
+        if os.path.exists(signature_path):
+            signature = Image.open(signature_path)
+            signature_width, signature_height = signature.size
+            signature_scale = min(379 / signature_width, 125 / signature_height)
+            rendered_width = signature_width * signature_scale
+            rendered_height = signature_height * signature_scale
+            pdf.drawImage(
+                ImageReader(signature),
+                x + signature_x * scale_x,
+                y + (-13) * scale_y,
+                width=rendered_width * scale_x,
+                height=rendered_height * scale_y,
+                mask="auto",
+            )
 
     if card["qr_path"]:
         pdf.drawImage(
