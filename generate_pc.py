@@ -7,6 +7,7 @@ from property_rules import CATEGORY_RULES, clean_tech_specs
 
 
 DICT_LOGO = "DICT-Logo.png"
+SIGNATURE_IMAGE = "sig.png"
 
 
 def create_qr_image(property_number: str, size=(375, 374)):
@@ -391,6 +392,16 @@ def draw_right_aligned_text(draw, text, right_x, y, base_font_path, base_size=30
     draw.text((right_x - text_width, y), text, fill="black", font=font)
 
 
+def paste_signature(tag, image_path=SIGNATURE_IMAGE):
+    """Place the signature over the signature field with slight vertical overflow."""
+    if not os.path.exists(image_path):
+        return
+
+    signature = Image.open(image_path).convert("RGBA")
+    signature.thumbnail((275, 90), Image.Resampling.LANCZOS)
+    tag.paste(signature, (190, 338), signature)
+
+
 def draw_fitted_pdf_text(c, text, x, y, max_width=470, font_name="Helvetica-Bold", base_size=25, min_size=8):
     """
     Renders text directly in the PDF canvas with dynamic auto-shrinking so text
@@ -563,6 +574,7 @@ def create_property_tags(
         draw_text_fitted(draw, acq_date_cost, TEXT_X, Y_ACQ_DATE_COST, MAX_TEXT_WIDTH, font_path, 30)
         draw_text_fitted(draw, row_accountable_person, TEXT_X, Y_ACCOUNTABLE, MAX_TEXT_WIDTH, font_path, 30)
         draw_right_aligned_text(draw, "2026", TEXT_X + MAX_TEXT_WIDTH, 363, font_path, 30)
+        paste_signature(tag)
 
         # Draw QR code
         qr_file_path = None
