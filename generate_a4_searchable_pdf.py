@@ -103,14 +103,14 @@ def draw_card(pdf, card, x, y, width, height):
 
     pdf.drawImage(TEMPLATE_IMAGE, x, y, width=width, height=height)
 
-    for signature_path, signature_x in [
-        (SIGNATURE_IMAGE, 190),
-        (SIGNATURE_IMAGE_2, 490),
+    for signature_path, signature_x, max_width, max_height in [
+        (SIGNATURE_IMAGE, 190, 417, 138),
+        (SIGNATURE_IMAGE_2, 475, 379, 125),
     ]:
         if os.path.exists(signature_path):
             signature = Image.open(signature_path)
             signature_width, signature_height = signature.size
-            signature_scale = min(379 / signature_width, 125 / signature_height)
+            signature_scale = min(max_width / signature_width, max_height / signature_height)
             rendered_width = signature_width * signature_scale
             rendered_height = signature_height * signature_scale
             pdf.drawImage(

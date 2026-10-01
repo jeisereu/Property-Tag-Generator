@@ -163,10 +163,8 @@ def parse_property_entry(raw_text: str):
             if val.lower() not in ["n/a", "na", "none", "nan"]:
                 sn = val
 
-    if not sn:
-        size_match = re.search(r'\bSize\s*:\s*([^\n\r]+)', text, re.IGNORECASE)
-        if size_match:
-            sn = size_match.group(1).strip()
+    size_match = re.search(r'\bSize\s*:\s*([^\n\r]+)', text, re.IGNORECASE)
+    size_value = size_match.group(1).strip() if size_match else ""
 
     # 2. Category / Description Extraction
     desc = ""
@@ -337,6 +335,15 @@ def parse_property_entry(raw_text: str):
         if normalized_color not in normalized_model_brand:
             model_brand = f"{model_brand}, {explicit_color}"
 
+    if size_value:
+        normalized_model_brand = re.sub(r'[^a-z0-9]+', '', model_brand.lower())
+        normalized_size = re.sub(r'[^a-z0-9]+', '', size_value.lower())
+        if normalized_size not in normalized_model_brand:
+            model_brand = f"{model_brand}, {size_value}" if model_brand else size_value
+
+    if not sn:
+        sn = "N/A"
+
     return desc.upper(), model_brand, sn
 
 
@@ -399,13 +406,13 @@ def draw_right_aligned_text(draw, text, right_x, y, base_font_path, base_size=30
     draw.text((right_x - text_width, y), text, fill="black", font=font)
 
 
-def paste_signature(tag, image_path=SIGNATURE_IMAGE, x=190):
+def paste_signature(tag, image_path=SIGNATURE_IMAGE, x=190, max_size=(379, 125)):
     """Place the signature over the signature field with slight vertical overflow."""
     if not os.path.exists(image_path):
         return
 
     signature = Image.open(image_path).convert("RGBA")
-    signature.thumbnail((379, 125), Image.Resampling.LANCZOS)
+    signature.thumbnail(max_size, Image.Resampling.LANCZOS)
     tag.paste(signature, (x, 338), signature)
 
 
@@ -581,8 +588,8 @@ def create_property_tags(
         draw_text_fitted(draw, acq_date_cost, TEXT_X, Y_ACQ_DATE_COST, MAX_TEXT_WIDTH, font_path, 30)
         draw_text_fitted(draw, row_accountable_person, TEXT_X, Y_ACCOUNTABLE, MAX_TEXT_WIDTH, font_path, 30)
         draw_right_aligned_text(draw, "2026", TEXT_X + MAX_TEXT_WIDTH, 363, font_path, 30)
-        paste_signature(tag)
-        paste_signature(tag, SIGNATURE_IMAGE_2, 490)
+        paste_signature(tag, max_size=(417, 138))
+        paste_signature(tag, SIGNATURE_IMAGE_2, 450)
 
         # Draw QR code
         qr_file_path = None
