@@ -120,10 +120,10 @@ def is_descriptive_attributes_only(value: str, attributes: str, description: str
 
 def description_font_size(text: str, base_size: int, min_size: int = 8) -> int:
     """Return a character-based starting size for a description field."""
-    reference_length = 36  # len("Hermaco 4D Drawer with safe Vertical")
-    first_reduction = 8
+    reference_length = 28
+    first_reduction = 5
     step_length = 8
-    step_reduction = 3
+    step_reduction = 2
 
     text_length = len(text or "")
     if text_length <= reference_length:
@@ -162,6 +162,11 @@ def parse_property_entry(raw_text: str):
             val = imei_match.group(1).strip().strip('"\'')
             if val.lower() not in ["n/a", "na", "none", "nan"]:
                 sn = val
+
+    if not sn:
+        size_match = re.search(r'\bSize\s*:\s*([^\n\r]+)', text, re.IGNORECASE)
+        if size_match:
+            sn = size_match.group(1).strip()
 
     # 2. Category / Description Extraction
     desc = ""
@@ -235,7 +240,7 @@ def parse_property_entry(raw_text: str):
         if len(lines) > 1:
             second_line = lines[1]
             if not re.search(
-                r'^(?:SN|S/N|Serial|Date|Cost|Engine|Model|Brand|Brand/Model|Color)',
+                r'^(?:SN|S/N|Serial|Date|Cost|Engine|Model|Brand|Brand/Model|Color|Size)',
                 second_line,
                 re.IGNORECASE,
             ):
@@ -289,14 +294,15 @@ def parse_property_entry(raw_text: str):
                 rem = re.sub(rf'\b{re.escape(w)}\b', '', rem, flags=re.IGNORECASE)
             candidate = rem.strip(' /,-;:\'"')
 
-        # Clean up candidate
-        candidate = clean_tech_specs(candidate, desc)
-        candidate = re.sub(
-            r'\b(?:Portable\s+Generator\s+Set|Generator\s+Set|Generator|Portable\s+Radio|Two[\s-]+Way\s+Radio|Radio|Center\s+Table|Desk\s+Console|Desk\s+RF\s+Unit|RF\s+Unit|Wooden\s+Chair|Monobloc\s+Chair|Monoblock\s+Chair|Computer\s+Table|Folding\s+Chair|Foldable\s+Chair|Gang\s+Chair|Office\s+Chair|Executive\s+Chair|Chair|Foldable\s+Table|Office\s+Table|Table|Vertical\s+Cabinet|Steel\s+Cabinet|Cabinet|Webcam|Camera|Rack|Fingerprint\s+Time\s+Attendance\s+Device|Time\s+Attendance\s+Device)\b',
-            '',
-            candidate,
-            flags=re.IGNORECASE
-        ).strip(' ,;:')
+        # Keep parenthesized model names intact while cleaning ordinary candidates.
+        if not re.fullmatch(r'\([^)]*\)', candidate.strip()):
+            candidate = clean_tech_specs(candidate, desc)
+            candidate = re.sub(
+                r'\b(?:Portable\s+Generator\s+Set|Generator\s+Set|Generator|Portable\s+Radio|Two[\s-]+Way\s+Radio|Radio|Center\s+Table|Desk\s+Console|Desk\s+RF\s+Unit|RF\s+Unit|Wooden\s+Chair|Monobloc\s+Chair|Monoblock\s+Chair|Computer\s+Table|Folding\s+Chair|Foldable\s+Chair|Gang\s+Chair|Office\s+Chair|Executive\s+Chair|Chair|Foldable\s+Table|Office\s+Table|Table|Vertical\s+Cabinet|Steel\s+Cabinet|Cabinet|Webcam|Camera|Rack|Fingerprint\s+Time\s+Attendance\s+Device|Time\s+Attendance\s+Device)\b',
+                '',
+                candidate,
+                flags=re.IGNORECASE
+            ).strip(' ,;:')
 
         # If candidate is solely an enclosed model code like (SMLH5-11006), unwrap the parentheses
         paren_code_match = re.fullmatch(r'\(([A-Za-z0-9\-]+)\)', candidate.strip())

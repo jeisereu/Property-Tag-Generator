@@ -10,7 +10,6 @@ CATEGORY_RULES = [
     (r'\b(network\s*switch|gigabit\s*switch|smart\s*switch|poe\s*switch|\bswitch\b)\b', "Network Switch"),
     (r'\b(gaming\s*monitor|monitor|lcd\s*display|led\s*display|computer\s*display)\b', "Monitor"),
     (r'\b(gaming\s+laptop)\b', "Gaming Laptop"),
-        (r'\b(office\s+laptop)\b', "Office Laptop"),
     (r'\b(laptop|notebook)\b', "Laptop"),
     (r'\b(3D\s*printer)\b', "3D Printer"),
     (r'\b(printer|all-in-one)\b', "Printer"),
@@ -25,9 +24,7 @@ CATEGORY_RULES = [
     (r'\b(television|smart\s*tv|tv)\b', "Television"),
     (r'\b(wireless\s*access\s*point|access\s*point|\bwap\b)\b', "Wireless Access Point"),
     (r'\b(wireless\s*router)\b', "Wireless Router"),
-        (r'\b(mobile\s+router)\b', "Mobile Router"),
     (r'\b(router)\b', "Router"),
-    (r'\b(?:ubiquiti\s+)?airfiber\s+dish\s+antenna\b', "Ubiquiti airFiber Dish Antenna"),
     (r'\b(airfiber|ubiquiti\s*airfiber)\b', "Wireless Router"),
     (r'\b(paper\s*shredder|shredder)\b', "Paper Shredder"),
     (r'\b(fingerprint|biometric|attendance\s*device|time\s*attendance)\b', "Biometric Device"),
@@ -103,12 +100,6 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
     cleaned = re.sub(r'\bwith\s+Leatherette\s+Cushion\s+and\s+Metal\s+Base\s*-\s*3\s+Seater\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
     cleaned = re.sub(r'\b(?:\w+\s+Tiered|\d+\s*Tiered|with\s+Glass\s+Top|Glass\s+Top)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
     cleaned = re.sub(r'\b(?:4G\s*LTE|4G|LTE|PoC|Portable)\b', '', cleaned, flags=re.IGNORECASE).strip(' ,;:-')
-    cleaned = re.sub(
-        r'\b\d+\s*(?:GB|TB)\s*/\s*\d+\s*(?:GB|TB)\b',
-        '',
-        cleaned,
-        flags=re.IGNORECASE,
-    ).strip(' ,;:-')
 
     parens = re.findall(r'\([^)]*\)', cleaned)
     masked = cleaned
