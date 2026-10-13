@@ -16,6 +16,9 @@ There are other supposed information, such as **Person Accountable**, however, c
 - **Install dependencies first on virtual environment using `python -m pip install -r requirements.txt`.**
 - **First two outputs are done by running `python generate_pc.py` and for the 3rd listed output, run `python generate_a4_searchable_pdf.py`.**
 
-*Uses `properties_sample.csv` if main  `properties.csv` file is not available*
+The generators always look for the default `properties.csv` beside the generator
+scripts, so running them from another working directory will not accidentally
+select a different CSV. They use `properties_sample.csv` beside the scripts
+only when that main file is unavailable. Explicit CSV paths remain supported.
 
 *Code is messy as hell, has a lot of arbitrary rules because the data was very non-uniform on the description column from the ICF.*

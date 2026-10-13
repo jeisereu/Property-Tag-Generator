@@ -1,5 +1,6 @@
 import os
 import re
+import hashlib
 import pandas as pd
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
@@ -9,6 +10,7 @@ from property_rules import CATEGORY_RULES, clean_tech_specs
 DICT_LOGO = "DICT-Logo.png"
 SIGNATURE_IMAGE = "sig.png"
 SIGNATURE_IMAGE_2 = "sig2.png"
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def create_qr_image(property_number: str, size=(375, 374)):
@@ -44,11 +46,23 @@ def create_qr_image(property_number: str, size=(375, 374)):
 
 
 def resolve_csv_file(csv_file: str = "properties.csv") -> str:
-    """Use the main CSV when available, otherwise use the sample CSV."""
+    """Resolve the default data files from the project, not the launch directory."""
+    if csv_file == "properties.csv":
+        project_csv = os.path.join(PROJECT_DIR, csv_file)
+        if os.path.exists(project_csv):
+            return project_csv
+
+        fallback_csv = os.path.join(PROJECT_DIR, "properties_sample.csv")
+        if os.path.exists(fallback_csv):
+            print(f"[!] '{project_csv}' not found. Using '{fallback_csv}'.")
+            return fallback_csv
+
+        return project_csv
+
     if os.path.exists(csv_file):
         return csv_file
 
-    fallback_csv = "properties_sample.csv"
+    fallback_csv = os.path.join(os.path.dirname(csv_file), "properties_sample.csv")
     if os.path.exists(fallback_csv):
         print(f"[!] '{csv_file}' not found. Using '{fallback_csv}'.")
         return fallback_csv
@@ -116,6 +130,45 @@ def is_descriptive_attributes_only(value: str, attributes: str, description: str
     for part in [attributes, description, "folding", "foldable"]:
         remaining = remaining.replace(normalize(part), "")
     return not remaining
+
+
+def summarize_furniture_model(value: str, description: str) -> str:
+    """Keep identifying furniture details while removing verbose construction text."""
+    if not value or not re.search(
+        r"\b(?:table|chair|cabinet|rack|shelf|drawer)\b",
+        description,
+        flags=re.IGNORECASE,
+    ):
+        return value
+
+    summarized = re.sub(
+        r"\b(?:with\s+)?centralized\s+lock\s+system\b",
+        "",
+        value,
+        flags=re.IGNORECASE,
+    )
+    summarized = re.sub(
+        r"\bwith\s+(?:a\s+)?lock\b",
+        "",
+        summarized,
+        flags=re.IGNORECASE,
+    )
+
+    drawer_match = re.search(
+        r"\b(\d+)\s+(?:side\s+|center\s+)?drawers?\b",
+        summarized,
+        flags=re.IGNORECASE,
+    )
+    if drawer_match:
+        summarized = (
+            summarized[:drawer_match.start()]
+            + f"{drawer_match.group(1)} DRAWERS"
+        )
+
+    summarized = re.sub(r"\s+\band\b\s*$", "", summarized, flags=re.IGNORECASE)
+    summarized = re.sub(r"\s+", " ", summarized).strip(" ,;:-")
+    summarized = re.sub(r"\s*,\s*", ", ", summarized)
+    return summarized
 
 
 def description_font_size(text: str, base_size: int, min_size: int = 8) -> int:
@@ -310,18 +363,7 @@ def parse_property_entry(raw_text: str):
         if candidate.lower() not in ["n/a", "none", "nan", ""]:
             model_brand = candidate
 
-    if not explicit_brand and not explicit_model and model_brand and len(comma_parts) > 1:
-        first_line_model = " ".join(
-            part for part in comma_parts[1:] if part.lower() != desc.lower()
-        )
-        first_line_normalized = re.sub(r'[^a-z0-9]+', '', first_line_model.lower())
-        model_normalized = re.sub(r'[^a-z0-9]+', '', model_brand.lower())
-        if (
-            first_line_model
-            and first_line_normalized not in model_normalized
-            and model_normalized not in first_line_normalized
-        ):
-            model_brand = f"{first_line_model} {model_brand}"
+    model_brand = summarize_furniture_model(model_brand, desc)
 
     if descriptive_attributes and (
         not model_brand
@@ -597,7 +639,8 @@ def create_property_tags(
             qr_img = create_qr_image(prop_no, QR_TARGET_SIZE)
             tag.paste(qr_img, (QR_BOX_X, QR_BOX_Y))
 
-            qr_file_path = os.path.join(temp_qr_dir, f"qr_{idx}.png")
+            qr_key = hashlib.sha256(prop_no.encode("utf-8")).hexdigest()[:16]
+            qr_file_path = os.path.join(temp_qr_dir, f"qr_{qr_key}.png")
             qr_img.save(qr_file_path)
 
         safe_name = re.sub(r'[^a-zA-Z0-9_\-.]', '_', prop_no) if prop_no else f"tag_{idx+1}_unassigned"

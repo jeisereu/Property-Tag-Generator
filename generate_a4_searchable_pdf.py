@@ -1,5 +1,6 @@
 import os
 import math
+import hashlib
 
 import pandas as pd
 from PIL import Image
@@ -60,7 +61,7 @@ def load_cards():
     """Read and normalize the same property data used by generate_pc.py."""
     cards = []
     data = pd.read_csv(resolve_csv_file(INPUT_CSV))
-    qr_directory = os.path.join("output_property_tags", "_temp_qr")
+    qr_directory = os.path.join(os.path.dirname(resolve_csv_file(INPUT_CSV)), "output_property_tags", "_temp_qr")
     os.makedirs(qr_directory, exist_ok=True)
 
     for row_index, (_, row) in enumerate(data.iterrows()):
@@ -79,9 +80,9 @@ def load_cards():
 
         qr_path = None
         if property_number:
-            qr_path = os.path.join(qr_directory, f"qr_{row_index}.png")
-            if not os.path.exists(qr_path):
-                create_qr_image(property_number).save(qr_path)
+            qr_key = hashlib.sha256(property_number.encode("utf-8")).hexdigest()[:16]
+            qr_path = os.path.join(qr_directory, f"qr_{qr_key}.png")
+            create_qr_image(property_number).save(qr_path)
 
         cards.append({
             "prop_no": property_number,

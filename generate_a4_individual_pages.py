@@ -19,7 +19,7 @@ from generate_a4_searchable_pdf import (
 )
 
 OUTPUT_DIRECTORY = "output_pdf"
-OUTPUT_BASENAME = "Property_Tags_A4_Searchable_Page"
+OUTPUT_BASENAME = "CNPO(new)_Property_Tags_Page"
 
 
 def create_individual_a4_pdfs(cards):
