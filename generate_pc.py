@@ -312,6 +312,11 @@ def parse_property_entry(raw_text: str):
             if explicit_engine and candidate:
                 candidate = f"{candidate} {explicit_engine}"
 
+        # UPS entries conventionally use "UPS, Brand Model" on the first line.
+        # Keep the brand/model portion even when later lines contain only metadata.
+        if not candidate and desc.upper() == "UPS" and len(comma_parts) > 1:
+            candidate = comma_parts[1]
+
         # B. Comma-separated items
         if not candidate and len(comma_parts) > 1:
             sub_parts = []
@@ -364,6 +369,16 @@ def parse_property_entry(raw_text: str):
             model_brand = candidate
 
     model_brand = summarize_furniture_model(model_brand, desc)
+
+    if not model_brand and desc.upper() == "UPS":
+        ups_model_match = re.search(r'^\s*UPS\s*,\s*([^\n\r]+)', text, re.IGNORECASE | re.MULTILINE)
+        if ups_model_match:
+            model_brand = re.sub(
+                r'\s+\d+\s*(?:VA|kVA)\b',
+                '',
+                ups_model_match.group(1),
+                flags=re.IGNORECASE,
+            ).strip(' ,;:-')
 
     if descriptive_attributes and (
         not model_brand
