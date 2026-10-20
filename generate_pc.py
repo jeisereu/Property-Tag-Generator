@@ -205,15 +205,15 @@ def parse_property_entry(raw_text: str):
     sn = ""
     sn_match = re.search(r'(?:SN|S/N|Serial\s*(?:No\.?)?)\s*[:\-]?\s*([^\n\r]+)', text, re.IGNORECASE)
     if sn_match:
-        val = sn_match.group(1).strip().strip('"\'')
-        if val.lower() not in ["n/a", "na", "none", "nan"]:
+        val = sn_match.group(1).strip().lstrip(":-").strip().strip('"\'')
+        if val.lower() not in ["n/a", "na", "none", "nan", "blank", "(blank)"]:
             sn = val
 
     if not sn:
         imei_match = re.search(r'\bIMEI\s*:\s*([^\n\r]+)', text, re.IGNORECASE)
         if imei_match:
-            val = imei_match.group(1).strip().strip('"\'')
-            if val.lower() not in ["n/a", "na", "none", "nan"]:
+            val = imei_match.group(1).strip().lstrip(":-").strip().strip('"\'')
+            if val.lower() not in ["n/a", "na", "none", "nan", "blank", "(blank)"]:
                 sn = val
 
     size_match = re.search(r'\bSize\s*:\s*([^\n\r]+)', text, re.IGNORECASE)
