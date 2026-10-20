@@ -4,7 +4,7 @@ import hashlib
 import pandas as pd
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
-from property_rules import CATEGORY_RULES, clean_tech_specs
+from property_rules import CATEGORY_RULES, clean_tech_specs, combine_engine_model
 
 
 DICT_LOGO = "DICT-Logo.png"
@@ -171,6 +171,34 @@ def summarize_furniture_model(value: str, description: str) -> str:
     return summarized
 
 
+def extract_furniture_characteristics(lines: list[str], description: str) -> str:
+    """Return useful furniture descriptors when no brand or model is available."""
+    if not re.search(
+        r"\b(?:table|chair|cabinet|rack|shelf|drawer)\b",
+        description,
+        flags=re.IGNORECASE,
+    ):
+        return ""
+
+    characteristics = []
+    for line in lines:
+        if re.match(
+            r"^(?:SN|S/N|Serial|Date|Cost|Engine|Model|Brand|Brand/Model|Color|Size)\b",
+            line,
+            re.IGNORECASE,
+        ):
+            continue
+
+        value = re.sub(r"^\s*[-*•]\s*", "", line).strip()
+        value = re.sub(r"^(?:Dimension|Dimensions)\s*:\s*", "", value, flags=re.IGNORECASE)
+        value = re.sub(r"^(?:Front|Side)\s*:\s*", "", value, flags=re.IGNORECASE)
+        value = re.sub(r"\s+", " ", value).strip(" ,;:-")
+        if value:
+            characteristics.append(value)
+
+    return " / ".join(dict.fromkeys(characteristics))
+
+
 def description_font_size(text: str, base_size: int, min_size: int = 8) -> int:
     """Return a character-based starting size for a description field."""
     reference_length = 28
@@ -243,14 +271,18 @@ def parse_property_entry(raw_text: str):
 
     # 3. Model / Brand Extraction
     explicit_brand = None
-    brand_match = re.search(r'Brand\s*[:\-]\s*([^\n\r]+)', text, re.IGNORECASE)
+    brand_match = re.search(r'^\s*Brand\s*[:\-]\s*([^\n\r]+)', text, re.IGNORECASE | re.MULTILINE)
     if brand_match:
         val = brand_match.group(1).strip()
         if val.lower() not in ["n/a", "none", "nan"]:
             explicit_brand = val
 
     explicit_model = None
-    model_match = re.search(r'Model(?:\s*No\.?)?\s*[:\-]\s*([^\n\r]+)', text, re.IGNORECASE)
+    model_match = re.search(
+        r'^\s*Model(?:\s*No\.?)?\s*[:\-]\s*([^\n\r]+)',
+        text,
+        re.IGNORECASE | re.MULTILINE,
+    )
     if model_match:
         val = model_match.group(1).strip()
         if val.lower() not in ["n/a", "none", "nan"]:
@@ -310,7 +342,7 @@ def parse_property_entry(raw_text: str):
 
             # If there is an engine model (e.g. 1E45F), attach it to the candidate
             if explicit_engine and candidate:
-                candidate = f"{candidate} {explicit_engine}"
+                candidate = combine_engine_model(candidate, explicit_engine, desc)
 
         # UPS entries conventionally use "UPS, Brand Model" on the first line.
         # Keep the brand/model portion even when later lines contain only metadata.
@@ -379,6 +411,14 @@ def parse_property_entry(raw_text: str):
                 ups_model_match.group(1),
                 flags=re.IGNORECASE,
             ).strip(' ,;:-')
+
+    furniture_characteristics = extract_furniture_characteristics(lines[1:], desc)
+    if furniture_characteristics and (
+        not model_brand
+        or model_brand.lower() in ["dimension", "dimensions"]
+        or model_brand.rstrip().lower().endswith(" x")
+    ):
+        model_brand = furniture_characteristics
 
     if descriptive_attributes and (
         not model_brand

@@ -73,6 +73,17 @@ CATEGORY_RULES = [
 ]
 
 
+def combine_engine_model(model: str, engine_model: str, description: str) -> str:
+    """Format a portable generator model with its engine model."""
+    if (
+        model
+        and engine_model
+        and re.search(r"\bportable\s+generator\s+set\b", description, re.IGNORECASE)
+    ):
+        return f"{model} ({engine_model})"
+    return f"{model} {engine_model}".strip()
+
+
 def clean_tech_specs(text: str, desc: str = "") -> str:
     """Remove technical specifications while preserving useful model details."""
     cleaned = text.strip()
