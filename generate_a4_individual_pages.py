@@ -17,9 +17,10 @@ from generate_a4_searchable_pdf import (
     draw_card,
     load_cards,
 )
+from terminal_progress import ProgressIndicator
 
 OUTPUT_DIRECTORY = "output_pdf"
-OUTPUT_BASENAME = "CNPO(new)_Property_Tags_Page"
+OUTPUT_BASENAME = "APO_Property_Tags_Page"
 
 
 def create_individual_a4_pdfs(cards):
@@ -43,15 +44,21 @@ def create_individual_a4_pdfs(cards):
         )
         pdf = canvas.Canvas(output_path, pagesize=A4)
 
+        progress = ProgressIndicator(
+            f"Creating A4 page {page_index + 1}/{page_count}",
+            len(page_cards),
+        )
         for card_index, card in enumerate(page_cards):
             row = card_index // COLUMNS
             column = card_index % COLUMNS
             x = PAGE_MARGIN + column * (card_width + COLUMN_GAP)
             y = PAGE_HEIGHT - PAGE_MARGIN - card_height - row * (card_height + ROW_GAP)
             draw_card(pdf, card, x, y, card_width, card_height)
+            progress.update(card["prop_no"] or f"card {card_index + 1}")
 
         pdf.showPage()
         pdf.save()
+        progress.finish()
         print(
             f"[+] Created: '{output_path}' ({len(page_cards)} cards, "
             f"page {page_index + 1} of {page_count})"

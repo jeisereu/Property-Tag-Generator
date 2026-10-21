@@ -5,6 +5,7 @@ import pandas as pd
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
 from property_rules import CATEGORY_RULES, clean_tech_specs, combine_engine_model
+from terminal_progress import ProgressIndicator
 
 
 DICT_LOGO = "DICT-Logo.png"
@@ -470,6 +471,26 @@ def format_acq_date_cost(raw_date, raw_cost) -> str:
     return ""
 
 
+def get_acquisition_date_cost(row) -> str:
+    """Read acquisition fields while tolerating the project's legacy CSV ordering."""
+    raw_date = row.get("date")
+    raw_cost = row.get("cost")
+
+    date_text = "" if pd.isna(raw_date) else str(raw_date).strip()
+    cost_text = "" if pd.isna(raw_cost) else str(raw_cost).strip()
+    raw_date_cost_like = bool(re.fullmatch(r"(?i)[₱$]?\s*[\d,]+(?:\.\d+)?", date_text))
+    raw_cost_date_like = bool(re.search(
+        r"(?i)(?:\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b"
+        r"|\b\d{1,4}[-/]\d{1,2}[-/]\d{1,4}\b)",
+        cost_text,
+    ))
+
+    if raw_date_cost_like and raw_cost_date_like:
+        raw_date, raw_cost = raw_cost, raw_date
+
+    return format_acq_date_cost(raw_date, raw_cost)
+
+
 def draw_text_fitted(draw, text, x, y, max_width, base_font_path, base_size=30, min_size=8):
     """Render text with auto-shrink so long values stay inside their field."""
     if not text:
@@ -567,6 +588,10 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
 
         c = canvas.Canvas(pdf_path, pagesize=(1155, 450))
 
+        progress = ProgressIndicator(
+            f"Creating PDF batch {batch_idx + 1}/{num_batches}",
+            len(batch_cards),
+        )
         for card in batch_cards:
             # Draw background tag template
             c.drawImage(template_image, 0, 0, width=1155, height=450)
@@ -600,8 +625,10 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
                 )
 
             c.showPage()
+            progress.update()
 
         c.save()
+        progress.finish()
         print(f"[+] Created: '{pdf_path}' (Contains items {start_idx + 1} to {end_idx})")
 
     print(f"\nAll PDF batches successfully saved in: '{output_pdf_dir}/'")
@@ -641,6 +668,7 @@ def create_property_tags(
 
     cards_for_pdf = []
 
+    progress = ProgressIndicator("Generating property tags", len(df))
     for idx, row in df.iterrows():
         raw_prop_no = row.get("property_number", "")
         prop_no = "" if pd.isna(raw_prop_no) else str(raw_prop_no).strip()
@@ -649,10 +677,11 @@ def create_property_tags(
 
         raw_desc = str(row.get("description", "")).strip()
         if not prop_no and not raw_desc:
+            progress.update(f"skipped row {idx + 1}")
             continue
 
         desc, model_brand, sn = parse_property_entry(raw_desc)
-        acq_date_cost = format_acq_date_cost(row.get("date"), row.get("cost"))
+        acq_date_cost = get_acquisition_date_cost(row)
         row_accountable_person = get_accountable_person(row, accountable_person)
 
         # Individual PNG
@@ -712,8 +741,9 @@ def create_property_tags(
             "qr_path": qr_file_path
         })
 
-        print(f"Generated: {out_png} -> [Desc: {desc or '(blank)'} | Model: {model_brand or '(blank)'} | SN: {sn or '(blank)'}]")
+        progress.update(prop_no or f"row {idx + 1}")
 
+    progress.finish()
     create_searchable_pdf(
         cards_for_pdf, 
         template_image, 

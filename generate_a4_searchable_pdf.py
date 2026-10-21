@@ -10,12 +10,13 @@ from reportlab.pdfgen import canvas
 
 from generate_pc import (
     create_qr_image,
-    format_acq_date_cost,
     get_accountable_person,
+    get_acquisition_date_cost,
     description_font_size,
     parse_property_entry,
     resolve_csv_file,
 )
+from terminal_progress import ProgressIndicator
 
 
 INPUT_CSV = "properties.csv"
@@ -64,6 +65,7 @@ def load_cards():
     qr_directory = os.path.join(os.path.dirname(resolve_csv_file(INPUT_CSV)), "output_property_tags", "_temp_qr")
     os.makedirs(qr_directory, exist_ok=True)
 
+    progress = ProgressIndicator("Preparing A4 cards", len(data))
     for row_index, (_, row) in enumerate(data.iterrows()):
         raw_property_number = row.get("property_number", "")
         property_number = "" if pd.isna(raw_property_number) else str(raw_property_number).strip()
@@ -72,10 +74,11 @@ def load_cards():
 
         raw_description = str(row.get("description", "")).strip()
         if not property_number and not raw_description:
+            progress.update(f"skipped row {row_index + 1}")
             continue
 
         description, model_brand, serial_number = parse_property_entry(raw_description)
-        acquisition = format_acq_date_cost(row.get("date"), row.get("cost"))
+        acquisition = get_acquisition_date_cost(row)
         row_accountable_person = get_accountable_person(row, ACCOUNTABLE_PERSON)
 
         qr_path = None
@@ -94,6 +97,9 @@ def load_cards():
             "qr_path": qr_path,
         })
 
+        progress.update(property_number or f"row {row_index + 1}")
+
+    progress.finish()
     return cards
 
 
@@ -181,6 +187,7 @@ def create_a4_pdf(cards):
     )
     cards_per_page = COLUMNS * rows
 
+    progress = ProgressIndicator("Creating A4 PDF", len(cards))
     for card_index, card in enumerate(cards):
         page_index = card_index % cards_per_page
         row = page_index // COLUMNS
@@ -192,8 +199,10 @@ def create_a4_pdf(cards):
 
         if page_index == cards_per_page - 1 or card_index == len(cards) - 1:
             pdf.showPage()
+        progress.update(card["prop_no"] or f"card {card_index + 1}")
 
     pdf.save()
+    progress.finish()
     page_count = (len(cards) + cards_per_page - 1) // cards_per_page
     print(
         f"[+] Created: '{OUTPUT_PDF}' ({len(cards)} cards, "
