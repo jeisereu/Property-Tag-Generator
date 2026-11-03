@@ -65,7 +65,7 @@ def load_cards():
     qr_directory = os.path.join(os.path.dirname(resolve_csv_file(INPUT_CSV)), "output_property_tags", "_temp_qr")
     os.makedirs(qr_directory, exist_ok=True)
 
-    progress = ProgressIndicator("Preparing A4 cards", len(data))
+    progress = ProgressIndicator("Preparing property tags", len(data))
     for row_index, (_, row) in enumerate(data.iterrows()):
         raw_property_number = row.get("property_number", "")
         property_number = "" if pd.isna(raw_property_number) else str(raw_property_number).strip()
