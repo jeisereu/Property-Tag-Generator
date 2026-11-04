@@ -301,7 +301,10 @@ def parse_property_entry(raw_text: str):
         for p in comma_parts[1:]:
             p_clean = p.strip()
             # If the chunk contains category words (e.g. "Monitor", "Chair", "Switch"), skip it!
-            if desc.lower() in p_clean.lower() or any(w in p_clean.lower() for w in ["monitor", "chair", "table", "cabinet", "rack", "switch", "unit"]):
+            if re.search(rf"\b{re.escape(desc)}\b", p_clean, re.IGNORECASE) or any(
+                re.search(rf"\b{re.escape(w)}\b", p_clean, re.IGNORECASE)
+                for w in ["monitor", "chair", "table", "cabinet", "rack", "switch", "unit"]
+            ):
                 continue
             # Only treat as brand if it is concise (1-2 words like "TP-Link", "Asus", "Gamdias")
             if len(p_clean.split()) <= 2:
