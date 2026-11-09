@@ -20,7 +20,7 @@ from generate_a4_searchable_pdf import (
 from terminal_progress import ProgressIndicator
 
 OUTPUT_DIRECTORY = "output_pdf"
-OUTPUT_BASENAME = "APO_Property_Tags_Page"
+OUTPUT_BASENAME = "SPO_Property_Tags_Page"
 
 
 def create_individual_a4_pdfs(cards):

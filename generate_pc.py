@@ -155,16 +155,19 @@ def summarize_furniture_model(value: str, description: str) -> str:
         flags=re.IGNORECASE,
     )
 
-    drawer_match = re.search(
-        r"\b(\d+)\s+(?:side\s+|center\s+)?drawers?\b",
+    def normalize_drawer_count(match: re.Match) -> str:
+        count = int(match.group(1))
+        qualifier = match.group(2)
+        noun = "DRAWER" if count == 1 else "DRAWERS"
+        qualifier_text = f"{qualifier.upper()} " if qualifier else ""
+        return f"{count} {qualifier_text}{noun}"
+
+    summarized = re.sub(
+        r"\b(\d+)\s+(?:(side|center)\s+)?drawers?\b",
+        normalize_drawer_count,
         summarized,
         flags=re.IGNORECASE,
     )
-    if drawer_match:
-        summarized = (
-            summarized[:drawer_match.start()]
-            + f"{drawer_match.group(1)} DRAWERS"
-        )
 
     summarized = re.sub(r"\s+\band\b\s*$", "", summarized, flags=re.IGNORECASE)
     summarized = re.sub(r"\s+", " ", summarized).strip(" ,;:-")
@@ -343,6 +346,18 @@ def parse_property_entry(raw_text: str):
                     ).strip(' ,;:-')
                     if fallback_l2:
                         candidate = second_line
+
+            if candidate and len(comma_parts) > 1 and re.search(
+                r"\b(?:table|chair|cabinet|rack|shelf|drawer)\b",
+                desc,
+                re.IGNORECASE,
+            ):
+                first_line_details = [
+                    part for part in comma_parts[1:]
+                    if part.lower() != desc.lower()
+                ]
+                if first_line_details:
+                    candidate = ", ".join(first_line_details + [candidate])
 
             # If there is an engine model (e.g. 1E45F), attach it to the candidate
             if explicit_engine and candidate:
