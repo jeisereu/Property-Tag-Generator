@@ -1,6 +1,7 @@
 import os
 import re
 import hashlib
+from decimal import Decimal, InvalidOperation
 import pandas as pd
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
@@ -11,6 +12,9 @@ from terminal_progress import ProgressIndicator
 DICT_LOGO = "DICT-Logo.png"
 SIGNATURE_IMAGE = "sig.png"
 SIGNATURE_IMAGE_2 = "sig2.png"
+PROPERTY_TAG_TEMPLATE = "DICT R5 Property Tag.png"
+HIGH_VALUE_PROPERTY_TAG_TEMPLATE = "DICT R5 Property Tag 2.png"
+HIGH_VALUE_THRESHOLD = Decimal("50000")
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -347,6 +351,20 @@ def parse_property_entry(raw_text: str):
                     if fallback_l2:
                         candidate = second_line
 
+            if (
+                candidate
+                and len(comma_parts) > 1
+                and is_descriptive_attributes_only(candidate, descriptive_attributes, desc)
+            ):
+                first_line_details = [
+                    part for part in comma_parts[1:]
+                    if part.lower() != desc.lower()
+                ]
+                if first_line_details:
+                    candidate = ", ".join(
+                        first_line_details + [candidate.strip("() ")]
+                    )
+
             if candidate and len(comma_parts) > 1 and re.search(
                 r"\b(?:table|chair|cabinet|rack|shelf|drawer)\b",
                 desc,
@@ -489,6 +507,46 @@ def format_acq_date_cost(raw_date, raw_cost) -> str:
     return ""
 
 
+def get_property_cost(row) -> Decimal | None:
+    """Return the numeric property cost, including the supported legacy ordering."""
+    raw_date = row.get("date")
+    raw_cost = row.get("cost")
+
+    date_text = "" if pd.isna(raw_date) else str(raw_date).strip()
+    cost_text = "" if pd.isna(raw_cost) else str(raw_cost).strip()
+    raw_date_cost_like = bool(re.fullmatch(r"(?i)[₱$]?\s*[\d,]+(?:\.\d+)?", date_text))
+    raw_cost_date_like = bool(re.search(
+        r"(?i)(?:\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b"
+        r"|\b\d{1,4}[-/]\d{1,2}[-/]\d{1,4}\b)",
+        cost_text,
+    ))
+    if raw_date_cost_like and raw_cost_date_like:
+        raw_cost = raw_date
+
+    if pd.isna(raw_cost):
+        return None
+    cost_text = str(raw_cost).strip()
+    if cost_text.lower() in ["", "nan", "none", "n/a", "na"]:
+        return None
+
+    match = re.search(r"[-+]?\d[\d,]*(?:\.\d+)?", cost_text)
+    if not match:
+        return None
+
+    try:
+        return Decimal(match.group(0).replace(",", ""))
+    except InvalidOperation:
+        return None
+
+
+def get_property_tag_template(row, default_template: str = PROPERTY_TAG_TEMPLATE) -> str:
+    """Select the yellow tag for properties costing at least PHP 50,000."""
+    cost = get_property_cost(row)
+    if cost is not None and cost >= HIGH_VALUE_THRESHOLD:
+        return HIGH_VALUE_PROPERTY_TAG_TEMPLATE
+    return default_template
+
+
 def get_acquisition_date_cost(row) -> str:
     """Read acquisition fields while tolerating the project's legacy CSV ordering."""
     raw_date = row.get("date")
@@ -612,7 +670,7 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
         )
         for card in batch_cards:
             # Draw background tag template
-            c.drawImage(template_image, 0, 0, width=1155, height=450)
+            c.drawImage(card.get("template_image", template_image), 0, 0, width=1155, height=450)
 
             # Draw QR code if present
             if card["qr_path"] and os.path.exists(card["qr_path"]):
@@ -653,7 +711,7 @@ def create_searchable_pdf(cards_data, template_image, base_output_pdf="All_Prope
 
 def create_property_tags(
     csv_file: str = "properties.csv",
-    template_image: str = "DICT R5 Property Tag.png",
+    template_image: str = PROPERTY_TAG_TEMPLATE,
     output_dir: str = "output_property_tags",
     accountable_person: str = "N. TABO"
 ):
@@ -703,7 +761,8 @@ def create_property_tags(
         row_accountable_person = get_accountable_person(row, accountable_person)
 
         # Individual PNG
-        tag = Image.open(template_image).convert("RGB")
+        selected_template = get_property_tag_template(row, template_image)
+        tag = Image.open(selected_template).convert("RGB")
         draw = ImageDraw.Draw(tag)
 
         # Draw non-empty text fields
@@ -756,7 +815,8 @@ def create_property_tags(
             "sn": sn,
             "acq": acq_date_cost,
             "accountable": row_accountable_person,
-            "qr_path": qr_file_path
+            "qr_path": qr_file_path,
+            "template_image": selected_template,
         })
 
         progress.update(prop_no or f"row {idx + 1}")

@@ -12,6 +12,7 @@ from generate_pc import (
     create_qr_image,
     get_accountable_person,
     get_acquisition_date_cost,
+    get_property_tag_template,
     description_font_size,
     parse_property_entry,
     resolve_csv_file,
@@ -95,6 +96,7 @@ def load_cards():
             "acq": acquisition,
             "accountable": row_accountable_person,
             "qr_path": qr_path,
+            "template_image": get_property_tag_template(row),
         })
 
         progress.update(property_number or f"row {row_index + 1}")
@@ -108,7 +110,7 @@ def draw_card(pdf, card, x, y, width, height):
     scale_x = width / TEMPLATE_WIDTH
     scale_y = height / TEMPLATE_HEIGHT
 
-    pdf.drawImage(TEMPLATE_IMAGE, x, y, width=width, height=height)
+    pdf.drawImage(card.get("template_image", TEMPLATE_IMAGE), x, y, width=width, height=height)
 
     for signature_path, signature_x, max_width, max_height in [
         (SIGNATURE_IMAGE, 190, 417, 138),

@@ -88,7 +88,19 @@ def clean_tech_specs(text: str, desc: str = "") -> str:
     """Remove technical specifications while preserving useful model details."""
     cleaned = text.strip()
 
-    if re.search(r'^\s*[-*•–—]?\s*\d*\s*(?:shelves|drawers?|doors?|glass|wooden|layer|tier)', cleaned, re.IGNORECASE):
+    is_furniture = bool(re.search(
+        r"\b(?:table|chair|cabinet|rack|shelf|drawer)\b",
+        desc,
+        re.IGNORECASE,
+    ))
+    if (
+        re.search(
+            r'^\s*[-*•–—]?\s*\d*\s*(?:shelves|drawers?|doors?|glass|wooden|layer|tier)',
+            cleaned,
+            re.IGNORECASE,
+        )
+        and not is_furniture
+    ):
         return ""
     if re.search(r'(?:L\s*\d+|\d+\s*L|\b\d+\s*["\']?\s*[xX*]\s*\d+\s*["\']?)', cleaned) and not re.search(r'[A-Za-z]{4,}', cleaned):
         return ""
